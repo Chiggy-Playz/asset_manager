@@ -35,9 +35,20 @@ class DatabaseService {
       var data = doc.data() as Map<String, dynamic>;
       return Model(
         id: doc.id,
-        fields: data['fields'] ?? {},
+        fields: Map<String, String>.from(data['fields'] ?? {}),
         identifyingField: data['identifyingField'] ?? 'Unknown',
+        fieldOrder: List<String>.from(data['fieldOrder']),
       );
     }).toList();
+  }
+
+  // Create model
+  Future<void> createModel(String id, Map<String, dynamic> data) {
+    return modelCollection.doc(id).set(data);
+  }
+
+  // Update model
+  Future<void> updateModel(String id, Map<String, dynamic> data) {
+    return modelCollection.doc(id).update(data);
   }
 }

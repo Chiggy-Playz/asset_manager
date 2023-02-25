@@ -1,12 +1,13 @@
 import 'package:asset_manager/models/asset.dart';
-import 'package:asset_manager/screens/assets/assets.dart';
-import 'package:asset_manager/screens/models/models.dart';
+import 'package:asset_manager/screens/assets/assets_page.dart';
+import 'package:asset_manager/screens/models/models_page.dart';
 import 'package:asset_manager/services/database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/model.dart';
 import '../assets/asset_page.dart';
+import '../models/model_page.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -51,11 +52,16 @@ class _HomeState extends State<Home> {
               case 0:
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => AssetPage(),
+                    builder: (context) => const AssetPage(),
                   ),
                 );
                 break;
               case 1:
+              Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ModelPage(),
+                  ),
+                );
                 break;
             }
           },

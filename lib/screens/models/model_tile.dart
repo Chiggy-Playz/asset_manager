@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/model.dart';
+import 'model_page.dart';
 
 class ModelTile extends StatelessWidget {
   final Model model;

@@ -1,10 +1,10 @@
-import 'package:asset_manager/screens/assets/asset_page.dart';
-import 'package:asset_manager/screens/home/home.dart';
-import 'package:asset_manager/services/database.dart';
+import 'screens/home/home.dart';
+import 'services/database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
+import 'shared/constants.dart';
 
 import 'models/asset.dart';
 import 'models/model.dart';
@@ -33,9 +33,9 @@ class MyApp extends StatelessWidget {
             ),
           ],
           child: MaterialApp(
-            theme: ThemeData(
-              primarySwatch: Colors.lightGreen,
-            ),
+            theme: ThemeData(useMaterial3: true, colorScheme: lightColorScheme),
+            darkTheme:
+                ThemeData(useMaterial3: true, colorScheme: darkColorScheme),
             home: const Home(),
           ));
     });

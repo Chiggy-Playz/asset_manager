@@ -1,8 +1,10 @@
+import 'package:asset_manager/shared/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/asset.dart';
 import '../../models/model.dart';
 import '../../shared/constants.dart';
+import 'package:responsive_sizer/responsive_sizer.dart';
 
 class AssetPage extends StatefulWidget {
   final Asset? asset;
@@ -38,10 +40,16 @@ class _AssetPageState extends State<AssetPage> {
 
         switch (value) {
           case "String":
-            fieldValueWidget = TextField();
+            fieldValueWidget = SizedBox(
+              width: 40.w, // 40% of screen width
+              child: TextField(),
+            );
             break;
           case "Number":
-            fieldValueWidget = TextField();
+            fieldValueWidget = SizedBox(
+              width: 40.w, // 40% of screen width
+              child: TextField(),
+            );
             break;
           case "Boolean":
             fieldValueWidget = Checkbox(
@@ -49,8 +57,7 @@ class _AssetPageState extends State<AssetPage> {
               onChanged: (value) {},
             );
             break;
-          case "Datetime":
-            // Date picker
+          case "Date":
             fieldValueWidget = TextButton(
               onPressed: () async {
                 var date = await showDatePicker(
@@ -67,19 +74,13 @@ class _AssetPageState extends State<AssetPage> {
             );
         }
 
-        fieldsOptions.add(Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              key,
-              style: font(16),
-            ),
-            const SizedBox(width: 50),
-            value != "Boolean"
-                ? Expanded(child: fieldValueWidget)
-                : fieldValueWidget,
-          ],
-        ));
+        fieldsOptions.addAll([
+          SpacedRow(
+            widget1: Text(key, style: font(16)),
+            widget2: fieldValueWidget,
+          ),
+          const SizedBox(height: 10)
+        ]);
       });
     }
 
@@ -92,23 +93,19 @@ class _AssetPageState extends State<AssetPage> {
           child: Column(
             children: [
               if (widget.asset != null) ...[
-                Text(
-                  "Asset ID: ${widget.asset!.id}",
-                  style: font(22),
+                SpacedRow(
+                  widget1: Text("Asset ID", style: font(22)),
+                  widget2: Text(widget.asset!.id, style: font(22)),
                 ),
                 const SizedBox(height: 20)
               ],
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
+              SpacedRow(
+                  widget1: Text(
                     "Model Type",
                     style: font(22),
                   ),
-                  const SizedBox(
-                    width: 50,
-                  ),
-                  Expanded(
+                  widget2: SizedBox(
+                    width: 50.w,
                     child: DropdownButton(
                       items: modelOptions,
                       isExpanded: true,
@@ -121,9 +118,7 @@ class _AssetPageState extends State<AssetPage> {
                           ? "No models available"
                           : "Cannot change model type"),
                     ),
-                  )
-                ],
-              ),
+                  )),
               if (fieldsOptions.isNotEmpty)
                 Card(
                   margin: const EdgeInsets.fromLTRB(0.0, 6.0, 0, 0.0),
