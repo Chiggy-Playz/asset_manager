@@ -53,6 +53,41 @@ class _ModelPageState extends State<ModelPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.model == null ? "New Model" : "Edit Model"),
+        actions: [
+          if (widget.model != null)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text("Delete Model"),
+                      content: const Text(
+                          "Are you sure you want to delete this model?"),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            await DatabaseService()
+                                .deleteModel(widget.model!.id);
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: const Text("Delete"),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

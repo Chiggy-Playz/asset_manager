@@ -52,6 +52,11 @@ class DatabaseService {
     return modelCollection.doc(id).update(data);
   }
 
+  // Delete model
+  Future<void> deleteModel(String id) {
+    return modelCollection.doc(id).delete();
+  }
+
   // Create asset
   Future<void> createAsset(Map<String, dynamic> data) {
     return assetCollection.add(data);
@@ -61,4 +66,10 @@ class DatabaseService {
   Future<void> updateAsset(String id, Map<String, dynamic> data) {
     return assetCollection.doc(id).update(data);
   }
+
+  // Delete asset
+  Future<void> deleteAsset(String id) {
+    return assetCollection.doc(id).delete();
+  }
+
 }

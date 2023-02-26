@@ -62,6 +62,43 @@ class _AssetPageState extends State<AssetPage> {
     return Scaffold(
         appBar: AppBar(
           title: Text(widget.asset != null ? "Edit Asset" : "Create Asset"),
+          actions: [
+            if (widget.asset != null)
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text("Delete Asset"),
+                        content: const Text(
+                            "Are you sure you want to delete this asset?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await DatabaseService()
+                                  .deleteAsset(widget.asset!.id);
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                                Navigator.of(context).pop();
+                              }
+                            },
+                            child: const Text("Delete"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              )
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
