@@ -26,6 +26,9 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    var models = Provider.of<List<Model>>(context);
+    final assets = Provider.of<List<Asset>>(context);
+
     return Scaffold(
         appBar: AppBar(
           title: const Text('Asset Manager'),
@@ -38,7 +41,7 @@ class _HomeState extends State<Home> {
               tooltip: 'All assets',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.model_training),
+              icon: Icon(Icons.lightbulb),
               label: 'Models',
               tooltip: 'All models',
             ),
@@ -57,7 +60,7 @@ class _HomeState extends State<Home> {
                 );
                 break;
               case 1:
-              Navigator.of(context).push(
+                Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const ModelPage(),
                   ),

@@ -49,7 +49,7 @@ class _ModelFieldRowState extends State<ModelFieldRow> {
   @override
   Widget build(BuildContext context) {
     List<DropdownMenuItem<String>> items =
-        ["String", "Number", "Boolean", "Date"]
+        ["String", "Number", "Boolean", "DateTime"]
             .map((fieldType) => DropdownMenuItem<String>(
                   value: fieldType,
                   child: Text(fieldType),
@@ -99,7 +99,7 @@ class _ModelFieldRowState extends State<ModelFieldRow> {
         key: _formKey,
         child: TextFormField(
           initialValue: widget.fieldName,
-          autovalidateMode: AutovalidateMode.always,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           onSaved: (value) => widget.fieldName = value!,
           validator: (value) {
             if (value?.isEmpty ?? true) {

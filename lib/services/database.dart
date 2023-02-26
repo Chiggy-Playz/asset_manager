@@ -51,4 +51,14 @@ class DatabaseService {
   Future<void> updateModel(String id, Map<String, dynamic> data) {
     return modelCollection.doc(id).update(data);
   }
+
+  // Create asset
+  Future<void> createAsset(Map<String, dynamic> data) {
+    return assetCollection.add(data);
+  }
+
+  // Update asset
+  Future<void> updateAsset(String id, Map<String, dynamic> data) {
+    return assetCollection.doc(id).update(data);
+  }
 }

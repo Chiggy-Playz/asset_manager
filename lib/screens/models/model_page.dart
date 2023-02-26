@@ -4,6 +4,7 @@ import 'package:asset_manager/services/database.dart';
 import 'package:asset_manager/shared/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
+// ignore: depend_on_referenced_packages
 import 'package:collection/collection.dart';
 
 import '../../shared/constants.dart';
@@ -68,7 +69,7 @@ class _ModelPageState extends State<ModelPage> {
                           labelText: "Can't be changed later",
                         ),
                         onSaved: (newValue) => _id = newValue!,
-                        autovalidateMode: AutovalidateMode.always,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         validator: (value) =>
                             (value?.isEmpty ?? true) ? "Can't be empty" : null,
                       ),
@@ -144,7 +145,7 @@ class _ModelPageState extends State<ModelPage> {
               alignment: Alignment.bottomCenter,
               child: FloatingActionButton.extended(
                 heroTag: "save-fab",
-                onPressed: () {
+                onPressed: () async {
                   if (widget.model is Model) {
                     Model model = widget.model!;
 
@@ -158,7 +159,7 @@ class _ModelPageState extends State<ModelPage> {
                       return;
                     }
 
-                    DatabaseService().updateModel(_id, {
+                    await DatabaseService().updateModel(_id, {
                       "identifyingField": _identifyingField,
                       "fieldOrder": _fieldOrder,
                       "fields": _fields,
@@ -172,19 +173,21 @@ class _ModelPageState extends State<ModelPage> {
                       return;
                     }
 
-                    DatabaseService().createModel(_id, {
+                    await DatabaseService().createModel(_id, {
                       "identifyingField": _identifyingField,
                       "fieldOrder": _fieldOrder,
                       "fields": _fields,
                     });
                   }
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text(widget.model == null ? "Created!" : "Updated!"),
-                    ),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            widget.model == null ? "Created!" : "Updated!"),
+                      ),
+                    );
+                    Navigator.pop(context);
+                  }
                 },
                 label: Text(
                   "Save",
