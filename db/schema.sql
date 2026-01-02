@@ -710,6 +710,22 @@ CREATE FUNCTION pgbouncer.get_auth(p_usename text) RETURNS TABLE(username text, 
 
 
 --
+-- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_admin() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    AS $$
+  select exists (
+    select 1
+    from profiles
+    where id = (select auth.uid())
+      and role = 'admin'
+  );
+$$;
+
+
+--
 -- Name: apply_rls(jsonb, integer); Type: FUNCTION; Schema: realtime; Owner: -
 --
 
@@ -4273,39 +4289,35 @@ ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 -- Name: profiles Admins read all profiles; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Admins read all profiles" ON public.profiles FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.profiles profiles_1
-  WHERE ((profiles_1.id = auth.uid()) AND (profiles_1.role = 'admin'::text)))));
+CREATE POLICY "Admins read all profiles" ON public.profiles FOR SELECT USING (public.is_admin());
 
 
 --
 -- Name: profiles Admins update profiles; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Admins update profiles" ON public.profiles FOR UPDATE USING ((EXISTS ( SELECT 1
-   FROM public.profiles profiles_1
-  WHERE ((profiles_1.id = auth.uid()) AND (profiles_1.role = 'admin'::text)))));
+CREATE POLICY "Admins update profiles" ON public.profiles FOR UPDATE USING (public.is_admin());
 
 
 --
 -- Name: profiles Users insert own profile; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Users insert own profile" ON public.profiles FOR INSERT WITH CHECK ((auth.uid() = id));
+CREATE POLICY "Users insert own profile" ON public.profiles FOR INSERT WITH CHECK (((( SELECT auth.uid() AS uid) = id) AND (role = 'user'::text)));
 
 
 --
 -- Name: profiles Users read own profile; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING ((auth.uid() = id));
+CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING ((( SELECT auth.uid() AS uid) = id));
 
 
 --
 -- Name: profiles Users update own profile; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING ((auth.uid() = id)) WITH CHECK (((auth.uid() = id) AND (role = role)));
+CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING ((( SELECT auth.uid() AS uid) = id)) WITH CHECK (((( SELECT auth.uid() AS uid) = id) AND (role = role)));
 
 
 --
