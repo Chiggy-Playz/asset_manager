@@ -4443,4 +4443,5 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 --
 
 INSERT INTO public.schema_migrations (version) VALUES
-    ('20260102123925');
+    ('20260102123925'),
+    ('20260102130105');
