@@ -2922,6 +2922,7 @@ CREATE TABLE public.profiles (
     name text NOT NULL,
     role text DEFAULT 'user'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
+    is_active boolean DEFAULT true NOT NULL,
     CONSTRAINT profiles_role_check CHECK ((role = ANY (ARRAY['user'::text, 'admin'::text])))
 );
 
@@ -3845,6 +3846,13 @@ CREATE INDEX users_is_anonymous_idx ON auth.users USING btree (is_anonymous);
 
 
 --
+-- Name: profiles_is_active_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX profiles_is_active_idx ON public.profiles USING btree (is_active);
+
+
+--
 -- Name: profiles_role_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4296,7 +4304,7 @@ CREATE POLICY "Admins read all profiles" ON public.profiles FOR SELECT USING (pu
 -- Name: profiles Admins update profiles; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Admins update profiles" ON public.profiles FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Admins update profiles" ON public.profiles FOR UPDATE USING (public.is_admin()) WITH CHECK ((is_active = is_active));
 
 
 --
@@ -4317,7 +4325,7 @@ CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING ((( S
 -- Name: profiles Users update own profile; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING ((( SELECT auth.uid() AS uid) = id)) WITH CHECK (((( SELECT auth.uid() AS uid) = id) AND (role = role)));
+CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING ((( SELECT auth.uid() AS uid) = id)) WITH CHECK (((( SELECT auth.uid() AS uid) = id) AND (role = role) AND (is_active = is_active)));
 
 
 --
@@ -4456,4 +4464,5 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20260102123925'),
-    ('20260102130105');
+    ('20260102130105'),
+    ('20260103164220');

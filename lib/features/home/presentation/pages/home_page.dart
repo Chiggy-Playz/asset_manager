@@ -1,69 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/responsive.dart';
-import '../../../auth/bloc/auth_bloc.dart';
-import '../../../auth/bloc/auth_event.dart';
+import '../../../assets/presentation/pages/assets_page.dart';
 import '../../../profile/bloc/profile_bloc.dart';
-import '../../../profile/bloc/profile_event.dart';
 import '../../../profile/bloc/profile_state.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../users/presentation/pages/users_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _currentIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              context.read<ProfileBloc>().add(ProfileCleared());
-              context.read<AuthBloc>().add(SignOutRequested());
-            },
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      builder: (context, profileState) {
+        final isAdmin = profileState is ProfileLoaded && profileState.profile.isAdmin;
+        final destinations = _buildDestinations(isAdmin);
+        final pages = _buildPages(isAdmin);
+
+        // Ensure index is valid if admin status changes
+        if (_currentIndex >= pages.length) {
+          _currentIndex = 0;
+        }
+
+        return Scaffold(
+          body: IndexedStack(
+            index: _currentIndex,
+            children: pages,
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: ResponsiveBuilder(
-          builder: (context, screenSize) {
-            return BlocBuilder<ProfileBloc, ProfileState>(
-              builder: (context, state) {
-                if (state is ProfileLoaded) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Welcome, ${state.profile.name}!',
-                            style: Theme.of(context).textTheme.headlineMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Role: ${state.profile.role}',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Screen: ${screenSize.name}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                return const Center(child: CircularProgressIndicator());
-              },
-            );
-          },
-        ),
-      ),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            destinations: destinations,
+          ),
+        );
+      },
     );
+  }
+
+  List<NavigationDestination> _buildDestinations(bool isAdmin) {
+    return [
+      const NavigationDestination(
+        icon: Icon(Icons.inventory_2_outlined),
+        selectedIcon: Icon(Icons.inventory_2),
+        label: 'Assets',
+      ),
+      if (isAdmin)
+        const NavigationDestination(
+          icon: Icon(Icons.people_outline),
+          selectedIcon: Icon(Icons.people),
+          label: 'Users',
+        ),
+      const NavigationDestination(
+        icon: Icon(Icons.settings_outlined),
+        selectedIcon: Icon(Icons.settings),
+        label: 'Settings',
+      ),
+    ];
+  }
+
+  List<Widget> _buildPages(bool isAdmin) {
+    return [
+      const AssetsPage(),
+      if (isAdmin) const UsersPage(),
+      const SettingsPage(),
+    ];
   }
 }

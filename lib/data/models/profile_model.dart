@@ -3,12 +3,14 @@ class ProfileModel {
   final String name;
   final String role;
   final DateTime createdAt;
+  final bool isActive;
 
   const ProfileModel({
     required this.id,
     required this.name,
     required this.role,
     required this.createdAt,
+    required this.isActive,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class ProfileModel {
       name: json['name'] as String,
       role: json['role'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
+      isActive: json['is_active'] as bool? ?? true,
     );
   }
 
@@ -26,6 +29,7 @@ class ProfileModel {
       'name': name,
       'role': role,
       'created_at': createdAt.toIso8601String(),
+      'is_active': isActive,
     };
   }
 
