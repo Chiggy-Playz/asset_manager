@@ -4,6 +4,7 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/assets/presentation/pages/assets_page.dart';
 import '../features/auth/bloc/auth_bloc.dart';
 import '../features/auth/bloc/auth_state.dart';
 import '../features/auth/presentation/pages/login_page.dart';
@@ -12,7 +13,9 @@ import '../features/home/presentation/pages/home_page.dart';
 import '../features/profile/bloc/profile_bloc.dart';
 import '../features/profile/bloc/profile_state.dart';
 import '../features/profile/presentation/pages/profile_creation_page.dart';
+import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
+import '../features/users/presentation/pages/users_page.dart';
 import 'routes.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -91,7 +94,22 @@ GoRouter createAppRouter({
         Routes.createProfile,
         Routes.splash,
       ].contains(location)) {
-        return Routes.home;
+        return Routes.assets;
+      }
+
+      // Redirect /home to /home/assets
+      if (location == Routes.home) {
+        return Routes.assets;
+      }
+
+      // Non-admins cannot access users page
+      if (location == Routes.users) {
+        final isAdmin =
+            // ignore: unnecessary_type_check
+            profileState is ProfileLoaded && profileState.profile.isAdmin;
+        if (!isAdmin) {
+          return Routes.assets;
+        }
       }
 
       return null;
@@ -113,7 +131,36 @@ GoRouter createAppRouter({
         path: Routes.createProfile,
         builder: (context, state) => const ProfileCreationPage(),
       ),
-      GoRoute(path: Routes.home, builder: (context, state) => const HomePage()),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            HomePage(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.assets,
+                builder: (context, state) => const AssetsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.users,
+                builder: (context, state) => const UsersPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.settings,
+                builder: (context, state) => const SettingsPage(),
+              ),
+            ],
+          ),
+        ],
+      ),
     ],
   );
 }

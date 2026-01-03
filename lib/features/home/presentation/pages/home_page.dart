@@ -1,52 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../assets/presentation/pages/assets_page.dart';
 import '../../../profile/bloc/profile_bloc.dart';
 import '../../../profile/bloc/profile_state.dart';
-import '../../../settings/presentation/pages/settings_page.dart';
-import '../../../users/presentation/pages/users_page.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomePage extends StatelessWidget {
+  final StatefulNavigationShell navigationShell;
 
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
+  const HomePage({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ProfileBloc, ProfileState>(
       builder: (context, profileState) {
-        final isAdmin = profileState is ProfileLoaded && profileState.profile.isAdmin;
-        final destinations = _buildDestinations(isAdmin);
-        final pages = _buildPages(isAdmin);
+        final isAdmin =
+            profileState is ProfileLoaded && profileState.profile.isAdmin;
 
-        // Ensure index is valid if admin status changes
-        if (_currentIndex >= pages.length) {
-          _currentIndex = 0;
-        }
+        // Map shell index to display index (accounting for hidden Users tab)
+        final displayIndex = _shellIndexToDisplayIndex(
+          navigationShell.currentIndex,
+          isAdmin,
+        );
 
         return Scaffold(
-          body: IndexedStack(
-            index: _currentIndex,
-            children: pages,
-          ),
+          body: navigationShell,
           bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
+            selectedIndex: displayIndex,
             onDestinationSelected: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
+              final shellIndex = _displayIndexToShellIndex(index, isAdmin);
+              navigationShell.goBranch(
+                shellIndex,
+                initialLocation: shellIndex == navigationShell.currentIndex,
+              );
             },
-            destinations: destinations,
+            destinations: _buildDestinations(isAdmin),
           ),
         );
       },
     );
+  }
+
+  int _shellIndexToDisplayIndex(int shellIndex, bool isAdmin) {
+    // Shell branches: 0=Assets, 1=Users, 2=Settings
+    // Display for admin: 0=Assets, 1=Users, 2=Settings
+    // Display for non-admin: 0=Assets, 1=Settings (Users hidden)
+    if (isAdmin) return shellIndex;
+    // Non-admin: Settings (shell 2) becomes display 1
+    return shellIndex == 2 ? 1 : shellIndex;
+  }
+
+  int _displayIndexToShellIndex(int displayIndex, bool isAdmin) {
+    if (isAdmin) return displayIndex;
+    // Non-admin: display 1 (Settings) maps to shell 2
+    return displayIndex == 1 ? 2 : displayIndex;
   }
 
   List<NavigationDestination> _buildDestinations(bool isAdmin) {
@@ -67,14 +74,6 @@ class _HomePageState extends State<HomePage> {
         selectedIcon: Icon(Icons.settings),
         label: 'Settings',
       ),
-    ];
-  }
-
-  List<Widget> _buildPages(bool isAdmin) {
-    return [
-      const AssetsPage(),
-      if (isAdmin) const UsersPage(),
-      const SettingsPage(),
     ];
   }
 }

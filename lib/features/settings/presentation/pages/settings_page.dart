@@ -11,19 +11,17 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(
         children: [
-          const Text('Settings - Coming Soon'),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () {
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Sign Out'),
+            onTap: () {
               context.read<ProfileBloc>().add(ProfileCleared());
               context.read<AuthBloc>().add(SignOutRequested());
             },
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign Out'),
           ),
         ],
       ),

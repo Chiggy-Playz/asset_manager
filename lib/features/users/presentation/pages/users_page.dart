@@ -39,29 +39,14 @@ class _UsersPageState extends State<UsersPage> {
         }
       },
       builder: (context, state) {
-        return SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Text(
-                      'Users',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: () => _showInviteDialog(context),
-                      icon: const Icon(Icons.person_add),
-                      label: const Text('Invite User'),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(child: _buildContent(context, state)),
-            ],
+        return Scaffold(
+          appBar: AppBar(title: const Text('Users')),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showInviteDialog(context),
+            icon: const Icon(Icons.person_add),
+            label: const Text('Invite'),
           ),
+          body: _buildContent(context, state),
         );
       },
     );
@@ -83,6 +68,14 @@ class _UsersPageState extends State<UsersPage> {
       return const Center(child: Text('No users found'));
     }
 
+    final sortedUsers = List.of(users)
+      ..sort((a, b) {
+        if (a.isActive == b.isActive) {
+          return a.name.compareTo(b.name);
+        }
+        return a.isActive ? -1 : 1;
+      });
+
     final currentUserId = _getCurrentUserId(context);
     final actionUserId = state is UserActionInProgress
         ? state.actionUserId
@@ -93,12 +86,12 @@ class _UsersPageState extends State<UsersPage> {
         context.read<UsersBloc>().add(UsersFetchRequested());
       },
       child: ListView.builder(
-        itemCount: users.length + 1,
+        itemCount: sortedUsers.length + 1,
         itemBuilder: (context, index) {
-          if (index == users.length) {
+          if (index == sortedUsers.length) {
             return const SizedBox(height: 24);
           }
-          final user = users[index];
+          final user = sortedUsers[index];
           final isCurrentUser = user.id == currentUserId;
           final isActionInProgress = actionUserId == user.id;
 
@@ -111,9 +104,7 @@ class _UsersPageState extends State<UsersPage> {
                 user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
                 style: user.isActive
                     ? null
-                    : TextStyle(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                    : TextStyle(color: Theme.of(context).colorScheme.outline),
               ),
             ),
             title: Text(
