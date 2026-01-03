@@ -726,6 +726,52 @@ $$;
 
 
 --
+-- Name: log_asset_changes(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.log_asset_changes() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+begin
+  if tg_op = 'INSERT' then
+    insert into asset_audit_logs (asset_id, user_id, action, new_values)
+    values (new.id, auth.uid(), 'created', to_jsonb(new));
+    return new;
+  elsif tg_op = 'UPDATE' then
+    -- Check if location changed
+    if old.current_location_id is distinct from new.current_location_id then
+      insert into asset_audit_logs (asset_id, user_id, action, old_values, new_values)
+      values (new.id, auth.uid(), 'transferred', to_jsonb(old), to_jsonb(new));
+    else
+      insert into asset_audit_logs (asset_id, user_id, action, old_values, new_values)
+      values (new.id, auth.uid(), 'updated', to_jsonb(old), to_jsonb(new));
+    end if;
+    return new;
+  elsif tg_op = 'DELETE' then
+    insert into asset_audit_logs (asset_id, user_id, action, old_values)
+    values (old.id, auth.uid(), 'deleted', to_jsonb(old));
+    return old;
+  end if;
+  return null;
+end;
+$$;
+
+
+--
+-- Name: update_assets_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_assets_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+
+--
 -- Name: apply_rls(jsonb, integer); Type: FUNCTION; Schema: realtime; Owner: -
 --
 
@@ -2914,6 +2960,67 @@ COMMENT ON COLUMN auth.users.is_sso_user IS 'Auth: Set this column to true when 
 
 
 --
+-- Name: asset_audit_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_audit_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    asset_id uuid,
+    user_id uuid,
+    action text NOT NULL,
+    old_values jsonb,
+    new_values jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT asset_audit_logs_action_check CHECK ((action = ANY (ARRAY['created'::text, 'updated'::text, 'deleted'::text, 'transferred'::text])))
+);
+
+
+--
+-- Name: assets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tag_id integer NOT NULL,
+    cpu text,
+    generation text,
+    ram text,
+    storage text,
+    serial_number text,
+    model_number text,
+    current_location_id uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: assets_tag_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.assets ALTER COLUMN tag_id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.assets_tag_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: locations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.locations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
 -- Name: profiles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3390,6 +3497,54 @@ ALTER TABLE ONLY auth.users
 
 
 --
+-- Name: asset_audit_logs asset_audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_audit_logs
+    ADD CONSTRAINT asset_audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assets assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assets assets_serial_number_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_serial_number_key UNIQUE (serial_number);
+
+
+--
+-- Name: assets assets_tag_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_tag_id_key UNIQUE (tag_id);
+
+
+--
+-- Name: locations locations_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.locations
+    ADD CONSTRAINT locations_name_key UNIQUE (name);
+
+
+--
+-- Name: locations locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.locations
+    ADD CONSTRAINT locations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3846,6 +4001,34 @@ CREATE INDEX users_is_anonymous_idx ON auth.users USING btree (is_anonymous);
 
 
 --
+-- Name: asset_audit_logs_asset_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_audit_logs_asset_id_idx ON public.asset_audit_logs USING btree (asset_id);
+
+
+--
+-- Name: asset_audit_logs_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_audit_logs_created_at_idx ON public.asset_audit_logs USING btree (created_at);
+
+
+--
+-- Name: asset_audit_logs_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_audit_logs_user_id_idx ON public.asset_audit_logs USING btree (user_id);
+
+
+--
+-- Name: assets_current_location_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX assets_current_location_id_idx ON public.assets USING btree (current_location_id);
+
+
+--
 -- Name: profiles_is_active_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3955,6 +4138,20 @@ CREATE UNIQUE INDEX objects_bucket_id_level_idx ON storage.objects USING btree (
 --
 
 CREATE UNIQUE INDEX vector_indexes_name_bucket_id_idx ON storage.vector_indexes USING btree (name, bucket_id);
+
+
+--
+-- Name: assets asset_audit_trigger; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER asset_audit_trigger AFTER INSERT OR DELETE OR UPDATE ON public.assets FOR EACH ROW EXECUTE FUNCTION public.log_asset_changes();
+
+
+--
+-- Name: assets assets_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER assets_updated_at BEFORE UPDATE ON public.assets FOR EACH ROW EXECUTE FUNCTION public.update_assets_updated_at();
 
 
 --
@@ -4142,6 +4339,30 @@ ALTER TABLE ONLY auth.sso_domains
 
 
 --
+-- Name: asset_audit_logs asset_audit_logs_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_audit_logs
+    ADD CONSTRAINT asset_audit_logs_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE SET NULL;
+
+
+--
+-- Name: asset_audit_logs asset_audit_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_audit_logs
+    ADD CONSTRAINT asset_audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: assets assets_current_location_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_current_location_id_fkey FOREIGN KEY (current_location_id) REFERENCES public.locations(id) ON DELETE RESTRICT;
+
+
+--
 -- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4294,6 +4515,27 @@ ALTER TABLE auth.sso_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: locations Admins can delete locations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can delete locations" ON public.locations FOR DELETE USING (public.is_admin());
+
+
+--
+-- Name: locations Admins can insert locations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can insert locations" ON public.locations FOR INSERT WITH CHECK (public.is_admin());
+
+
+--
+-- Name: locations Admins can update locations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can update locations" ON public.locations FOR UPDATE USING (public.is_admin());
+
+
+--
 -- Name: profiles Admins read all profiles; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4305,6 +4547,55 @@ CREATE POLICY "Admins read all profiles" ON public.profiles FOR SELECT USING (pu
 --
 
 CREATE POLICY "Admins update profiles" ON public.profiles FOR UPDATE USING (public.is_admin()) WITH CHECK ((is_active = is_active));
+
+
+--
+-- Name: asset_audit_logs Anyone can read asset_audit_logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can read asset_audit_logs" ON public.asset_audit_logs FOR SELECT USING (true);
+
+
+--
+-- Name: assets Anyone can read assets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can read assets" ON public.assets FOR SELECT USING ((auth.uid() IS NOT NULL));
+
+
+--
+-- Name: locations Anyone can read locations; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can read locations" ON public.locations FOR SELECT USING (true);
+
+
+--
+-- Name: assets Authenticated users can delete assets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Authenticated users can delete assets" ON public.assets FOR DELETE USING ((auth.uid() IS NOT NULL));
+
+
+--
+-- Name: assets Authenticated users can insert assets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Authenticated users can insert assets" ON public.assets FOR INSERT WITH CHECK ((auth.uid() IS NOT NULL));
+
+
+--
+-- Name: assets Authenticated users can update assets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Authenticated users can update assets" ON public.assets FOR UPDATE USING ((auth.uid() IS NOT NULL));
+
+
+--
+-- Name: asset_audit_logs System and admins can insert asset_audit_logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "System and admins can insert asset_audit_logs" ON public.asset_audit_logs FOR INSERT WITH CHECK (true);
 
 
 --
@@ -4327,6 +4618,24 @@ CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING ((( S
 
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING ((( SELECT auth.uid() AS uid) = id)) WITH CHECK (((( SELECT auth.uid() AS uid) = id) AND (role = role) AND (is_active = is_active)));
 
+
+--
+-- Name: asset_audit_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.asset_audit_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: assets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.assets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: locations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4465,4 +4774,5 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 INSERT INTO public.schema_migrations (version) VALUES
     ('20260102123925'),
     ('20260102130105'),
-    ('20260103164220');
+    ('20260103164220'),
+    ('20260103172009');
