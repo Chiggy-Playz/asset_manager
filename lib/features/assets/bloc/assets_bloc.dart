@@ -40,6 +40,7 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
     emit(AssetActionInProgress(_cachedAssets));
     try {
       await _assetsRepository.createAsset(
+        tagId: event.tagId,
         cpu: event.cpu,
         generation: event.generation,
         ram: event.ram,

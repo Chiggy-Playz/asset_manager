@@ -3,6 +3,7 @@ sealed class AssetsEvent {}
 class AssetsFetchRequested extends AssetsEvent {}
 
 class AssetCreateRequested extends AssetsEvent {
+  final String tagId;
   final String? cpu;
   final String? generation;
   final String? ram;
@@ -12,6 +13,7 @@ class AssetCreateRequested extends AssetsEvent {
   final String? currentLocationId;
 
   AssetCreateRequested({
+    required this.tagId,
     this.cpu,
     this.generation,
     this.ram,

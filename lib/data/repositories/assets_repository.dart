@@ -32,6 +32,7 @@ class AssetsRepository {
   }
 
   Future<AssetModel> createAsset({
+    required String tagId,
     String? cpu,
     String? generation,
     String? ram,
@@ -41,6 +42,7 @@ class AssetsRepository {
     String? currentLocationId,
   }) async {
     final response = await _client.from('assets').insert({
+      'tag_id': tagId,
       'cpu': cpu,
       'generation': generation,
       'ram': ram,

@@ -46,7 +46,7 @@ class AssetCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      '#${asset.tagId}',
+                      asset.tagId,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onPrimaryContainer,

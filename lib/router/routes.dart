@@ -11,10 +11,15 @@ abstract class Routes {
   static const assetDetail = '/home/assets/:id';
   static const assetEdit = '/home/assets/:id/edit';
 
+  // Requests (for users)
+  static const requests = '/home/requests';
+
   // Admin (admin only)
   static const admin = '/home/admin';
   static const adminUsers = '/home/admin/users';
   static const adminLocations = '/home/admin/locations';
+  static const adminFieldOptions = '/home/admin/field-options';
+  static const adminRequests = '/home/admin/requests';
 
   // Settings
   static const settings = '/home/settings';

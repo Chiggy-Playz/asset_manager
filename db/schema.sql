@@ -710,6 +710,74 @@ CREATE FUNCTION pgbouncer.get_auth(p_usename text) RETURNS TABLE(username text, 
 
 
 --
+-- Name: apply_approved_request(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.apply_approved_request() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_tag_id text;
+  v_cpu text;
+  v_generation text;
+  v_ram text;
+  v_storage text;
+  v_serial_number text;
+  v_model_number text;
+  v_current_location_id uuid;
+BEGIN
+  -- Only process when status changes from 'pending' to 'approved'
+  IF NEW.status = 'approved' AND OLD.status = 'pending' THEN
+    -- Set reviewed_at timestamp
+    NEW.reviewed_at = now();
+
+    CASE NEW.request_type
+      WHEN 'create' THEN
+        -- Extract values from request_data
+        v_tag_id := NEW.request_data->>'tag_id';
+        v_cpu := NEW.request_data->>'cpu';
+        v_generation := NEW.request_data->>'generation';
+        v_ram := NEW.request_data->>'ram';
+        v_storage := NEW.request_data->>'storage';
+        v_serial_number := NEW.request_data->>'serial_number';
+        v_model_number := NEW.request_data->>'model_number';
+        v_current_location_id := (NEW.request_data->>'current_location_id')::uuid;
+
+        INSERT INTO assets (tag_id, cpu, generation, ram, storage, serial_number, model_number, current_location_id)
+        VALUES (v_tag_id, v_cpu, v_generation, v_ram, v_storage, v_serial_number, v_model_number, v_current_location_id);
+
+      WHEN 'update' THEN
+        UPDATE assets SET
+          cpu = COALESCE(NEW.request_data->>'cpu', cpu),
+          generation = COALESCE(NEW.request_data->>'generation', generation),
+          ram = COALESCE(NEW.request_data->>'ram', ram),
+          storage = COALESCE(NEW.request_data->>'storage', storage),
+          serial_number = COALESCE(NEW.request_data->>'serial_number', serial_number),
+          model_number = COALESCE(NEW.request_data->>'model_number', model_number)
+        WHERE id = NEW.asset_id;
+
+      WHEN 'delete' THEN
+        DELETE FROM assets WHERE id = NEW.asset_id;
+
+      WHEN 'transfer' THEN
+        v_current_location_id := (NEW.request_data->>'current_location_id')::uuid;
+        UPDATE assets SET current_location_id = v_current_location_id
+        WHERE id = NEW.asset_id;
+
+    END CASE;
+  END IF;
+
+  -- Also set reviewed_at when rejecting
+  IF NEW.status = 'rejected' AND OLD.status = 'pending' THEN
+    NEW.reviewed_at = now();
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -764,6 +832,20 @@ begin
   new.updated_at = now();
   return new;
 end;
+$$;
+
+
+--
+-- Name: update_field_options_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_field_options_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
 $$;
 
 
@@ -2972,12 +3054,31 @@ CREATE TABLE public.asset_audit_logs (
 
 
 --
+-- Name: asset_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.asset_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    asset_id uuid,
+    request_type text NOT NULL,
+    request_data jsonb NOT NULL,
+    requested_by uuid,
+    requested_at timestamp with time zone DEFAULT now(),
+    status text DEFAULT 'pending'::text NOT NULL,
+    reviewed_by uuid,
+    reviewed_at timestamp with time zone,
+    review_notes text,
+    CONSTRAINT asset_requests_request_type_check CHECK ((request_type = ANY (ARRAY['create'::text, 'update'::text, 'delete'::text, 'transfer'::text]))),
+    CONSTRAINT asset_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))
+);
+
+
+--
 -- Name: assets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.assets (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    tag_id integer NOT NULL,
     cpu text,
     generation text,
     ram text,
@@ -2986,21 +3087,23 @@ CREATE TABLE public.assets (
     model_number text,
     current_location_id uuid,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    tag_id text NOT NULL
 );
 
 
 --
--- Name: assets_tag_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: field_options; Type: TABLE; Schema: public; Owner: -
 --
 
-ALTER TABLE public.assets ALTER COLUMN tag_id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.assets_tag_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
+CREATE TABLE public.field_options (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    field_name text NOT NULL,
+    options jsonb DEFAULT '[]'::jsonb NOT NULL,
+    is_required boolean DEFAULT false NOT NULL,
+    display_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -3501,6 +3604,14 @@ ALTER TABLE ONLY public.asset_audit_logs
 
 
 --
+-- Name: asset_requests asset_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_requests
+    ADD CONSTRAINT asset_requests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: assets assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3522,6 +3633,22 @@ ALTER TABLE ONLY public.assets
 
 ALTER TABLE ONLY public.assets
     ADD CONSTRAINT assets_tag_id_key UNIQUE (tag_id);
+
+
+--
+-- Name: field_options field_options_field_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_options
+    ADD CONSTRAINT field_options_field_name_key UNIQUE (field_name);
+
+
+--
+-- Name: field_options field_options_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_options
+    ADD CONSTRAINT field_options_pkey PRIMARY KEY (id);
 
 
 --
@@ -4018,6 +4145,27 @@ CREATE INDEX asset_audit_logs_user_id_idx ON public.asset_audit_logs USING btree
 
 
 --
+-- Name: asset_requests_requested_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_requests_requested_at_idx ON public.asset_requests USING btree (requested_at);
+
+
+--
+-- Name: asset_requests_requested_by_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_requests_requested_by_idx ON public.asset_requests USING btree (requested_by);
+
+
+--
+-- Name: asset_requests_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_requests_status_idx ON public.asset_requests USING btree (status);
+
+
+--
 -- Name: assets_current_location_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4148,6 +4296,20 @@ CREATE TRIGGER asset_audit_trigger AFTER INSERT OR DELETE OR UPDATE ON public.as
 --
 
 CREATE TRIGGER assets_updated_at BEFORE UPDATE ON public.assets FOR EACH ROW EXECUTE FUNCTION public.update_assets_updated_at();
+
+
+--
+-- Name: field_options field_options_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER field_options_updated_at BEFORE UPDATE ON public.field_options FOR EACH ROW EXECUTE FUNCTION public.update_field_options_updated_at();
+
+
+--
+-- Name: asset_requests on_request_status_change; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER on_request_status_change BEFORE UPDATE ON public.asset_requests FOR EACH ROW EXECUTE FUNCTION public.apply_approved_request();
 
 
 --
@@ -4351,6 +4513,30 @@ ALTER TABLE ONLY public.asset_audit_logs
 
 
 --
+-- Name: asset_requests asset_requests_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_requests
+    ADD CONSTRAINT asset_requests_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: asset_requests asset_requests_requested_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_requests
+    ADD CONSTRAINT asset_requests_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: asset_requests asset_requests_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_requests
+    ADD CONSTRAINT asset_requests_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
 -- Name: assets assets_current_location_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4511,10 +4697,45 @@ ALTER TABLE auth.sso_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: assets Admins can delete assets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can delete assets" ON public.assets FOR DELETE USING (public.is_admin());
+
+
+--
+-- Name: field_options Admins can delete field_options; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can delete field_options" ON public.field_options FOR DELETE USING (public.is_admin());
+
+
+--
 -- Name: locations Admins can delete locations; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Admins can delete locations" ON public.locations FOR DELETE USING (public.is_admin());
+
+
+--
+-- Name: asset_requests Admins can delete requests; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can delete requests" ON public.asset_requests FOR DELETE USING (public.is_admin());
+
+
+--
+-- Name: assets Admins can insert assets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can insert assets" ON public.assets FOR INSERT WITH CHECK (public.is_admin());
+
+
+--
+-- Name: field_options Admins can insert field_options; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can insert field_options" ON public.field_options FOR INSERT WITH CHECK (public.is_admin());
 
 
 --
@@ -4525,10 +4746,31 @@ CREATE POLICY "Admins can insert locations" ON public.locations FOR INSERT WITH 
 
 
 --
+-- Name: assets Admins can update assets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can update assets" ON public.assets FOR UPDATE USING (public.is_admin());
+
+
+--
+-- Name: field_options Admins can update field_options; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can update field_options" ON public.field_options FOR UPDATE USING (public.is_admin());
+
+
+--
 -- Name: locations Admins can update locations; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Admins can update locations" ON public.locations FOR UPDATE USING (public.is_admin());
+
+
+--
+-- Name: asset_requests Admins can update requests; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can update requests" ON public.asset_requests FOR UPDATE USING (public.is_admin());
 
 
 --
@@ -4560,6 +4802,13 @@ CREATE POLICY "Anyone can read assets" ON public.assets FOR SELECT USING ((auth.
 
 
 --
+-- Name: field_options Anyone can read field_options; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can read field_options" ON public.field_options FOR SELECT USING (true);
+
+
+--
 -- Name: locations Anyone can read locations; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4567,31 +4816,24 @@ CREATE POLICY "Anyone can read locations" ON public.locations FOR SELECT USING (
 
 
 --
--- Name: assets Authenticated users can delete assets; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Authenticated users can delete assets" ON public.assets FOR DELETE USING ((auth.uid() IS NOT NULL));
-
-
---
--- Name: assets Authenticated users can insert assets; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Authenticated users can insert assets" ON public.assets FOR INSERT WITH CHECK ((auth.uid() IS NOT NULL));
-
-
---
--- Name: assets Authenticated users can update assets; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Authenticated users can update assets" ON public.assets FOR UPDATE USING ((auth.uid() IS NOT NULL));
-
-
---
 -- Name: asset_audit_logs System and admins can insert asset_audit_logs; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "System and admins can insert asset_audit_logs" ON public.asset_audit_logs FOR INSERT WITH CHECK (true);
+
+
+--
+-- Name: asset_requests Users can create requests; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can create requests" ON public.asset_requests FOR INSERT WITH CHECK (((( SELECT auth.uid() AS uid) IS NOT NULL) AND (( SELECT auth.uid() AS uid) = requested_by)));
+
+
+--
+-- Name: asset_requests Users can read own requests; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can read own requests" ON public.asset_requests FOR SELECT USING (((( SELECT auth.uid() AS uid) = requested_by) OR public.is_admin()));
 
 
 --
@@ -4622,10 +4864,22 @@ CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING (((
 ALTER TABLE public.asset_audit_logs ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: asset_requests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.asset_requests ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: assets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.assets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: field_options; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.field_options ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: locations; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4771,4 +5025,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260102123925'),
     ('20260102130105'),
     ('20260103164220'),
-    ('20260103172009');
+    ('20260103172009'),
+    ('20260104122803');

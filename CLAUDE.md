@@ -4,3 +4,7 @@ There exist sever utility classes in lib/core/utils to help with responsiveness,
 
 # UI Design
 Always adhere to material 3 design principles when creating UI components.
+
+# Security
+
+When working with sql tables, always enable RLS (Row Level Security) to ensure data security and proper access control. Make sure only authorized users can access or modify sensitive data.

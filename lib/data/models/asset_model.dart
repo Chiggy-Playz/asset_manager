@@ -1,6 +1,6 @@
 class AssetModel {
   final String id;
-  final int tagId;
+  final String tagId;
   final String? cpu;
   final String? generation;
   final String? ram;
@@ -35,7 +35,7 @@ class AssetModel {
 
     return AssetModel(
       id: json['id'] as String,
-      tagId: json['tag_id'] as int,
+      tagId: json['tag_id'] as String,
       cpu: json['cpu'] as String?,
       generation: json['generation'] as String?,
       ram: json['ram'] as String?,
@@ -67,7 +67,7 @@ class AssetModel {
 
   AssetModel copyWith({
     String? id,
-    int? tagId,
+    String? tagId,
     String? cpu,
     String? generation,
     String? ram,

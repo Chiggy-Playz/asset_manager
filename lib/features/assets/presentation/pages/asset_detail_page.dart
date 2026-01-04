@@ -91,7 +91,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('Asset #${asset.tagId}'),
+            title: Text('Asset ${asset.tagId}'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.swap_horiz),
@@ -148,7 +148,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                   Text('Asset Information',
                       style: theme.textTheme.titleMedium),
                   const Divider(),
-                  _buildInfoRow('Tag ID', '#${asset.tagId}'),
+                  _buildInfoRow('Tag ID', asset.tagId),
                   _buildInfoRow(
                     'Serial Number',
                     asset.serialNumber ?? '-',
@@ -418,7 +418,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Asset'),
         content: Text(
-          'Are you sure you want to delete asset #${asset.tagId}? This action cannot be undone.',
+          'Are you sure you want to delete asset ${asset.tagId}? This action cannot be undone.',
         ),
         actions: [
           TextButton(

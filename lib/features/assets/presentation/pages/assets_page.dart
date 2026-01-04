@@ -136,7 +136,7 @@ class _AssetsPageState extends State<AssetsPage> {
                   onSelectChanged: (_) =>
                       context.go(Routes.assetDetailPath(asset.id)),
                   cells: [
-                    DataCell(Text('#${asset.tagId}')),
+                    DataCell(Text(asset.tagId)),
                     DataCell(Text(asset.serialNumber ?? '-')),
                     DataCell(Text(asset.modelNumber ?? '-')),
                     DataCell(Text(asset.cpu ?? '-')),
@@ -213,7 +213,7 @@ class _AssetsPageState extends State<AssetsPage> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Asset'),
         content: Text(
-          'Are you sure you want to delete asset #${asset.tagId}? This action cannot be undone.',
+          'Are you sure you want to delete asset ${asset.tagId}? This action cannot be undone.',
         ),
         actions: [
           TextButton(

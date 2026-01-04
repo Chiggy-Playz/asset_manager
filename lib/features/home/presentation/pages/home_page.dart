@@ -18,7 +18,7 @@ class HomePage extends StatelessWidget {
         final isAdmin =
             profileState is ProfileLoaded && profileState.profile.isAdmin;
 
-        // Map shell index to display index (accounting for hidden Users tab)
+        // Map shell index to display index
         final displayIndex = _shellIndexToDisplayIndex(
           navigationShell.currentIndex,
           isAdmin,
@@ -73,19 +73,19 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  // Shell branches: 0=Assets, 1=Requests, 2=Admin, 3=Settings
+  // Display for admin: 0=Assets, 1=Requests, 2=Admin, 3=Settings
+  // Display for non-admin: 0=Assets, 1=Requests, 2=Settings (Admin hidden)
   int _shellIndexToDisplayIndex(int shellIndex, bool isAdmin) {
-    // Shell branches: 0=Assets, 1=Users, 2=Settings
-    // Display for admin: 0=Assets, 1=Users, 2=Settings
-    // Display for non-admin: 0=Assets, 1=Settings (Users hidden)
     if (isAdmin) return shellIndex;
-    // Non-admin: Settings (shell 2) becomes display 1
-    return shellIndex == 2 ? 1 : shellIndex;
+    // Non-admin: Settings (shell 3) becomes display 2
+    return shellIndex == 3 ? 2 : shellIndex;
   }
 
   int _displayIndexToShellIndex(int displayIndex, bool isAdmin) {
     if (isAdmin) return displayIndex;
-    // Non-admin: display 1 (Settings) maps to shell 2
-    return displayIndex == 1 ? 2 : displayIndex;
+    // Non-admin: display 2 (Settings) maps to shell 3
+    return displayIndex == 2 ? 3 : displayIndex;
   }
 
   List<NavigationDestination> _buildBarDestinations(bool isAdmin) {
@@ -94,6 +94,11 @@ class HomePage extends StatelessWidget {
         icon: Icon(Icons.inventory_2_outlined),
         selectedIcon: Icon(Icons.inventory_2),
         label: 'Assets',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.assignment_outlined),
+        selectedIcon: Icon(Icons.assignment),
+        label: 'Requests',
       ),
       if (isAdmin)
         const NavigationDestination(
@@ -115,6 +120,11 @@ class HomePage extends StatelessWidget {
         icon: Icon(Icons.inventory_2_outlined),
         selectedIcon: Icon(Icons.inventory_2),
         label: Text('Assets'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.assignment_outlined),
+        selectedIcon: Icon(Icons.assignment),
+        label: Text('Requests'),
       ),
       if (isAdmin)
         const NavigationRailDestination(

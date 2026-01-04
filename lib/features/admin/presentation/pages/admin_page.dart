@@ -15,6 +15,14 @@ class AdminPage extends StatelessWidget {
       body: ListView(
         children: [
           ListTile(
+            leading: const Icon(Icons.assignment_outlined),
+            title: const Text('Review Requests'),
+            subtitle: const Text('Approve or reject asset requests'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(Routes.adminRequests),
+          ),
+          const Divider(height: 1),
+          ListTile(
             leading: const Icon(Icons.people_outline),
             title: const Text('Users'),
             subtitle: const Text('Manage user accounts'),
@@ -28,6 +36,14 @@ class AdminPage extends StatelessWidget {
             subtitle: const Text('Manage asset locations'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go(Routes.adminLocations),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.tune_outlined),
+            title: const Text('Field Options'),
+            subtitle: const Text('Configure dropdown values for asset fields'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(Routes.adminFieldOptions),
           ),
         ],
       ),

@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/admin/presentation/pages/admin_page.dart';
+import '../features/admin/presentation/pages/field_options_page.dart';
 import '../features/admin/presentation/pages/locations_page.dart';
+import '../features/admin/presentation/pages/requests_management_page.dart';
 import '../features/admin/presentation/pages/users_page.dart';
 import '../features/assets/presentation/pages/asset_detail_page.dart';
 import '../features/assets/presentation/pages/asset_form_page.dart';
 import '../features/assets/presentation/pages/assets_page.dart';
+import '../features/requests/presentation/pages/my_requests_page.dart';
 import '../features/auth/bloc/auth_bloc.dart';
 import '../features/auth/bloc/auth_state.dart';
 import '../features/auth/presentation/pages/login_page.dart';
@@ -109,6 +112,7 @@ GoRouter createAppRouter({
       // Non-admins cannot access admin pages
       if (location.startsWith(Routes.admin)) {
         final isAdmin =
+            // ignore: unnecessary_type_check
             profileState is ProfileLoaded && profileState.profile.isAdmin;
         if (!isAdmin) {
           return Routes.assets;
@@ -169,6 +173,14 @@ GoRouter createAppRouter({
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: Routes.requests,
+                builder: (context, state) => const MyRequestsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: Routes.admin,
                 builder: (context, state) => const AdminPage(),
                 routes: [
@@ -179,6 +191,14 @@ GoRouter createAppRouter({
                   GoRoute(
                     path: 'locations',
                     builder: (context, state) => const LocationsPage(),
+                  ),
+                  GoRoute(
+                    path: 'field-options',
+                    builder: (context, state) => const FieldOptionsPage(),
+                  ),
+                  GoRoute(
+                    path: 'requests',
+                    builder: (context, state) => const RequestsManagementPage(),
                   ),
                 ],
               ),
