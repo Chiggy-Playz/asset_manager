@@ -40,7 +40,6 @@ class UsersBloc extends Bloc<UsersEvent, UsersState> {
     try {
       await _usersRepository.inviteUser(event.email);
       emit(UserActionSuccess(_cachedUsers, 'Invitation sent to ${event.email}'));
-      // Refresh the list
       add(UsersFetchRequested());
     } catch (e) {
       emit(UsersError(e.toString()));
@@ -56,7 +55,6 @@ class UsersBloc extends Bloc<UsersEvent, UsersState> {
     try {
       await _usersRepository.banUser(event.userId);
       emit(UserActionSuccess(_cachedUsers, 'User has been disabled'));
-      // Refresh the list
       add(UsersFetchRequested());
     } catch (e) {
       emit(UsersError(e.toString()));
@@ -72,7 +70,6 @@ class UsersBloc extends Bloc<UsersEvent, UsersState> {
     try {
       await _usersRepository.unbanUser(event.userId);
       emit(UserActionSuccess(_cachedUsers, 'User has been enabled'));
-      // Refresh the list
       add(UsersFetchRequested());
     } catch (e) {
       emit(UsersError(e.toString()));

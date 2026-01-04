@@ -97,9 +97,9 @@ class HomePage extends StatelessWidget {
       ),
       if (isAdmin)
         const NavigationDestination(
-          icon: Icon(Icons.people_outline),
-          selectedIcon: Icon(Icons.people),
-          label: 'Users',
+          icon: Icon(Icons.admin_panel_settings_outlined),
+          selectedIcon: Icon(Icons.admin_panel_settings),
+          label: 'Admin',
         ),
       const NavigationDestination(
         icon: Icon(Icons.settings_outlined),
@@ -118,9 +118,9 @@ class HomePage extends StatelessWidget {
       ),
       if (isAdmin)
         const NavigationRailDestination(
-          icon: Icon(Icons.people_outline),
-          selectedIcon: Icon(Icons.people),
-          label: Text('Users'),
+          icon: Icon(Icons.admin_panel_settings_outlined),
+          selectedIcon: Icon(Icons.admin_panel_settings),
+          label: Text('Admin'),
         ),
       const NavigationRailDestination(
         icon: Icon(Icons.settings_outlined),

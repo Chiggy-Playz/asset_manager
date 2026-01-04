@@ -4,6 +4,11 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/admin/presentation/pages/admin_page.dart';
+import '../features/admin/presentation/pages/locations_page.dart';
+import '../features/admin/presentation/pages/users_page.dart';
+import '../features/assets/presentation/pages/asset_detail_page.dart';
+import '../features/assets/presentation/pages/asset_form_page.dart';
 import '../features/assets/presentation/pages/assets_page.dart';
 import '../features/auth/bloc/auth_bloc.dart';
 import '../features/auth/bloc/auth_state.dart';
@@ -15,7 +20,6 @@ import '../features/profile/bloc/profile_state.dart';
 import '../features/profile/presentation/pages/profile_creation_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
-import '../features/users/presentation/pages/users_page.dart';
 import 'routes.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -102,10 +106,9 @@ GoRouter createAppRouter({
         return Routes.assets;
       }
 
-      // Non-admins cannot access users page
-      if (location == Routes.users) {
+      // Non-admins cannot access admin pages
+      if (location.startsWith(Routes.admin)) {
         final isAdmin =
-            // ignore: unnecessary_type_check
             profileState is ProfileLoaded && profileState.profile.isAdmin;
         if (!isAdmin) {
           return Routes.assets;
@@ -140,14 +143,44 @@ GoRouter createAppRouter({
               GoRoute(
                 path: Routes.assets,
                 builder: (context, state) => const AssetsPage(),
+                routes: [
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => const AssetFormPage(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => AssetDetailPage(
+                      assetId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'edit',
+                        builder: (context, state) => AssetFormPage(
+                          assetId: state.pathParameters['id'],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: Routes.users,
-                builder: (context, state) => const UsersPage(),
+                path: Routes.admin,
+                builder: (context, state) => const AdminPage(),
+                routes: [
+                  GoRoute(
+                    path: 'users',
+                    builder: (context, state) => const UsersPage(),
+                  ),
+                  GoRoute(
+                    path: 'locations',
+                    builder: (context, state) => const LocationsPage(),
+                  ),
+                ],
               ),
             ],
           ),
