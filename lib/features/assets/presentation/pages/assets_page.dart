@@ -30,9 +30,9 @@ class _AssetsPageState extends State<AssetsPage> {
     return BlocConsumer<AssetsBloc, AssetsState>(
       listener: (context, state) {
         if (state is AssetActionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
         } else if (state is AssetsError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -69,11 +69,37 @@ class _AssetsPageState extends State<AssetsPage> {
     }
 
     final assets = _getAssets(state);
-    final actionAssetId =
-        state is AssetActionInProgress ? state.actionAssetId : null;
+    final actionAssetId = state is AssetActionInProgress
+        ? state.actionAssetId
+        : null;
 
     if (assets.isEmpty) {
-      return const Center(child: Text('No assets found'));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No assets yet',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start by adding new assets to your inventory',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -104,8 +130,9 @@ class _AssetsPageState extends State<AssetsPage> {
     }
 
     final assets = _getAssets(state);
-    final actionAssetId =
-        state is AssetActionInProgress ? state.actionAssetId : null;
+    final actionAssetId = state is AssetActionInProgress
+        ? state.actionAssetId
+        : null;
 
     if (assets.isEmpty) {
       return const Center(child: Text('No assets found'));
@@ -162,8 +189,9 @@ class _AssetsPageState extends State<AssetsPage> {
                                 IconButton(
                                   icon: const Icon(Icons.edit),
                                   tooltip: 'Edit',
-                                  onPressed: () =>
-                                      context.go(Routes.assetEditPath(asset.id)),
+                                  onPressed: () => context.go(
+                                    Routes.assetEditPath(asset.id),
+                                  ),
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.delete),
@@ -200,8 +228,8 @@ class _AssetsPageState extends State<AssetsPage> {
         currentLocationId: asset.currentLocationId,
         onTransfer: (locationId) {
           context.read<AssetsBloc>().add(
-                AssetTransferRequested(id: asset.id, toLocationId: locationId),
-              );
+            AssetTransferRequested(id: asset.id, toLocationId: locationId),
+          );
         },
       ),
     );
