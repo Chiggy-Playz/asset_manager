@@ -13,7 +13,7 @@ alter table locations enable row level security;
 -- Everyone can read locations
 create policy "Anyone can read locations"
 on locations for select
-using (true);
+using ((select auth.uid()) is not null);
 
 -- Only admins can modify locations
 create policy "Admins can insert locations"
@@ -54,20 +54,20 @@ alter table assets enable row level security;
 -- Everyone can read assets
 create policy "Anyone can read assets"
 on assets for select
-using (auth.uid() is not null);
+using ((select auth.uid()) is not null);
 
 -- All authenticated users can modify assets
 create policy "Authenticated users can insert assets"
 on assets for insert
-with check (auth.uid() is not null);
+with check ((select auth.uid()) is not null);
 
 create policy "Authenticated users can update assets"
 on assets for update
-using (auth.uid() is not null);
+using ((select auth.uid()) is not null);
 
 create policy "Authenticated users can delete assets"
 on assets for delete
-using (auth.uid() is not null);
+using ((select auth.uid()) is not null);
 
 -- Asset audit logs table
 create table asset_audit_logs (
@@ -89,12 +89,12 @@ alter table asset_audit_logs enable row level security;
 -- Everyone can read audit logs
 create policy "Anyone can read asset_audit_logs"
 on asset_audit_logs for select
-using (true);
+using ((select auth.uid()) is not null);
 
 -- Allow inserts from triggers (using service role) and admins
 create policy "System and admins can insert asset_audit_logs"
 on asset_audit_logs for insert
-with check (true);
+with check ((select auth.uid()) is not null);
 
 -- Trigger function to auto-update updated_at on assets
 create or replace function update_assets_updated_at()

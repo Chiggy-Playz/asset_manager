@@ -26,7 +26,7 @@ ALTER TABLE field_options ENABLE ROW LEVEL SECURITY;
 -- Everyone can read field options
 CREATE POLICY "Anyone can read field_options"
 ON field_options FOR SELECT
-USING (true);
+USING ((select auth.uid()) is not null);
 
 -- Only admins can modify field options
 CREATE POLICY "Admins can insert field_options"

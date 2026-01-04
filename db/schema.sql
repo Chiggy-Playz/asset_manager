@@ -710,69 +710,25 @@ CREATE FUNCTION pgbouncer.get_auth(p_usename text) RETURNS TABLE(username text, 
 
 
 --
--- Name: apply_approved_request(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: asset_request_populate_current_data(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.apply_approved_request() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE FUNCTION public.asset_request_populate_current_data() RETURNS trigger
+    LANGUAGE plpgsql
     AS $$
-DECLARE
-  v_tag_id text;
-  v_cpu text;
-  v_generation text;
-  v_ram text;
-  v_storage text;
-  v_serial_number text;
-  v_model_number text;
-  v_current_location_id uuid;
 BEGIN
-  -- Only process when status changes from 'pending' to 'approved'
-  IF NEW.status = 'approved' AND OLD.status = 'pending' THEN
-    -- Set reviewed_at timestamp
-    NEW.reviewed_at = now();
-
-    CASE NEW.request_type
-      WHEN 'create' THEN
-        -- Extract values from request_data
-        v_tag_id := NEW.request_data->>'tag_id';
-        v_cpu := NEW.request_data->>'cpu';
-        v_generation := NEW.request_data->>'generation';
-        v_ram := NEW.request_data->>'ram';
-        v_storage := NEW.request_data->>'storage';
-        v_serial_number := NEW.request_data->>'serial_number';
-        v_model_number := NEW.request_data->>'model_number';
-        v_current_location_id := (NEW.request_data->>'current_location_id')::uuid;
-
-        INSERT INTO assets (tag_id, cpu, generation, ram, storage, serial_number, model_number, current_location_id)
-        VALUES (v_tag_id, v_cpu, v_generation, v_ram, v_storage, v_serial_number, v_model_number, v_current_location_id);
-
-      WHEN 'update' THEN
-        UPDATE assets SET
-          cpu = COALESCE(NEW.request_data->>'cpu', cpu),
-          generation = COALESCE(NEW.request_data->>'generation', generation),
-          ram = COALESCE(NEW.request_data->>'ram', ram),
-          storage = COALESCE(NEW.request_data->>'storage', storage),
-          serial_number = COALESCE(NEW.request_data->>'serial_number', serial_number),
-          model_number = COALESCE(NEW.request_data->>'model_number', model_number)
-        WHERE id = NEW.asset_id;
-
-      WHEN 'delete' THEN
-        DELETE FROM assets WHERE id = NEW.asset_id;
-
-      WHEN 'transfer' THEN
-        v_current_location_id := (NEW.request_data->>'current_location_id')::uuid;
-        UPDATE assets SET current_location_id = v_current_location_id
-        WHERE id = NEW.asset_id;
-
-    END CASE;
-  END IF;
-
-  -- Also set reviewed_at when rejecting
-  IF NEW.status = 'rejected' AND OLD.status = 'pending' THEN
-    NEW.reviewed_at = now();
-  END IF;
-
-  RETURN NEW;
+SELECT jsonb_build_object(
+      'cpu', cpu,
+      'generation', generation,
+      'ram', ram,
+      'storage', storage,
+      'serial_number', serial_number,
+      'model_number', model_number
+    )
+INTO NEW.current_data
+FROM assets
+WHERE id = NEW.asset_id;
+RETURN NEW;
 END;
 $$;
 
@@ -3062,6 +3018,7 @@ CREATE TABLE public.asset_requests (
     asset_id uuid,
     request_type text NOT NULL,
     request_data jsonb NOT NULL,
+    current_data jsonb,
     requested_by uuid,
     requested_at timestamp with time zone DEFAULT now(),
     status text DEFAULT 'pending'::text NOT NULL,
@@ -3101,7 +3058,6 @@ CREATE TABLE public.field_options (
     field_name text NOT NULL,
     options jsonb DEFAULT '[]'::jsonb NOT NULL,
     is_required boolean DEFAULT false NOT NULL,
-    display_order integer DEFAULT 0 NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -4292,6 +4248,13 @@ CREATE TRIGGER asset_audit_trigger AFTER INSERT OR DELETE OR UPDATE ON public.as
 
 
 --
+-- Name: asset_requests asset_request_before_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER asset_request_before_insert BEFORE INSERT ON public.asset_requests FOR EACH ROW WHEN ((new.request_type = 'update'::text)) EXECUTE FUNCTION public.asset_request_populate_current_data();
+
+
+--
 -- Name: assets assets_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4303,13 +4266,6 @@ CREATE TRIGGER assets_updated_at BEFORE UPDATE ON public.assets FOR EACH ROW EXE
 --
 
 CREATE TRIGGER field_options_updated_at BEFORE UPDATE ON public.field_options FOR EACH ROW EXECUTE FUNCTION public.update_field_options_updated_at();
-
-
---
--- Name: asset_requests on_request_status_change; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER on_request_status_change BEFORE UPDATE ON public.asset_requests FOR EACH ROW EXECUTE FUNCTION public.apply_approved_request();
 
 
 --
@@ -4791,35 +4747,35 @@ CREATE POLICY "Admins update profiles" ON public.profiles FOR UPDATE USING (publ
 -- Name: asset_audit_logs Anyone can read asset_audit_logs; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Anyone can read asset_audit_logs" ON public.asset_audit_logs FOR SELECT USING (true);
+CREATE POLICY "Anyone can read asset_audit_logs" ON public.asset_audit_logs FOR SELECT USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
 
 --
 -- Name: assets Anyone can read assets; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Anyone can read assets" ON public.assets FOR SELECT USING ((auth.uid() IS NOT NULL));
+CREATE POLICY "Anyone can read assets" ON public.assets FOR SELECT USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
 
 --
 -- Name: field_options Anyone can read field_options; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Anyone can read field_options" ON public.field_options FOR SELECT USING (true);
+CREATE POLICY "Anyone can read field_options" ON public.field_options FOR SELECT USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
 
 --
 -- Name: locations Anyone can read locations; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Anyone can read locations" ON public.locations FOR SELECT USING (true);
+CREATE POLICY "Anyone can read locations" ON public.locations FOR SELECT USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
 
 --
 -- Name: asset_audit_logs System and admins can insert asset_audit_logs; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "System and admins can insert asset_audit_logs" ON public.asset_audit_logs FOR INSERT WITH CHECK (true);
+CREATE POLICY "System and admins can insert asset_audit_logs" ON public.asset_audit_logs FOR INSERT WITH CHECK ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
 
 --
