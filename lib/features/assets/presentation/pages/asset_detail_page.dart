@@ -1,3 +1,4 @@
+import 'package:asset_manager/shared/widgets/changes_detail_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,7 +16,6 @@ import '../../../admin/bloc/locations_state.dart';
 import '../../bloc/assets_bloc.dart';
 import '../../bloc/assets_event.dart';
 import '../../bloc/assets_state.dart';
-import '../widgets/history_detail_sheet.dart';
 import '../widgets/transfer_dialog.dart';
 
 class AssetDetailPage extends StatefulWidget {
@@ -301,7 +301,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final localTime = log.createdAt.toLocal();
 
     return InkWell(
-      onTap: () => HistoryDetailSheet.show(context, log: log, locations: locations),
+      onTap: () => ChangesDetailSheet.showFromAuditLog(context, log: log, locations: locations),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
