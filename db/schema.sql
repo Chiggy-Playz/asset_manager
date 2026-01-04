@@ -747,10 +747,6 @@ begin
       values (new.id, auth.uid(), 'updated', to_jsonb(old), to_jsonb(new));
     end if;
     return new;
-  elsif tg_op = 'DELETE' then
-    insert into asset_audit_logs (asset_id, user_id, action, old_values)
-    values (old.id, auth.uid(), 'deleted', to_jsonb(old));
-    return old;
   end if;
   return null;
 end;
