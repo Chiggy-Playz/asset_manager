@@ -1,4 +1,9 @@
+import 'package:asset_manager/features/admin/bloc/locations_bloc.dart';
+import 'package:asset_manager/features/admin/bloc/locations_state.dart';
+import 'package:asset_manager/features/profile/bloc/profile_bloc.dart';
+import 'package:asset_manager/features/profile/bloc/profile_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/models/asset_audit_log_model.dart';
@@ -8,14 +13,13 @@ import '../../data/models/location_model.dart';
 /// A shared widget to display change details for both:
 /// - Asset audit logs (history)
 /// - Asset requests (review)
-class ChangesDetailSheet extends StatelessWidget {
+class ChangesDetailSheet extends StatefulWidget {
   final String title;
   final String? subtitle;
   final String? date;
   final ChangeType changeType;
   final Map<String, dynamic>? oldValues;
   final Map<String, dynamic>? newValues;
-  final List<LocationModel> locations;
 
   const ChangesDetailSheet({
     super.key,
@@ -25,7 +29,6 @@ class ChangesDetailSheet extends StatelessWidget {
     required this.changeType,
     this.oldValues,
     this.newValues,
-    this.locations = const [],
   });
 
   /// Show changes from an asset audit log
@@ -48,7 +51,6 @@ class ChangesDetailSheet extends StatelessWidget {
         changeType: _actionToChangeType(log.action),
         oldValues: log.oldValues,
         newValues: log.newValues,
-        locations: locations,
       ),
     );
   }
@@ -57,7 +59,6 @@ class ChangesDetailSheet extends StatelessWidget {
   static void showFromRequest(
     BuildContext context, {
     required AssetRequestModel request,
-    required List<LocationModel> locations,
   }) {
     final dateFormat = DateFormat('dd MMM yyyy at HH:mm');
 
@@ -74,7 +75,6 @@ class ChangesDetailSheet extends StatelessWidget {
         changeType: _requestTypeToChangeType(request.requestType),
         oldValues: null, // Requests don't have old values
         newValues: request.requestData,
-        locations: locations,
       ),
     );
   }
@@ -109,61 +109,78 @@ class ChangesDetailSheet extends StatelessWidget {
   }
 
   @override
+  State<ChangesDetailSheet> createState() => _ChangesDetailSheetState();
+}
+
+class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
+  List<LocationModel> locations = [];
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.3,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (context, scrollController) {
-        return SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(title, style: theme.textTheme.titleLarge),
-              if (subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-              ],
-              if (date != null)
-                Text(
-                  date!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-              const Divider(height: 32),
-              _buildContent(theme),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
+    return BlocListener<LocationsBloc, LocationsState>(
+      listener: (context, locationState) {
+        locations = switch (locationState) {
+          LocationsLoaded l => l.locations,
+          LocationActionInProgress l => l.locations,
+          LocationActionSuccess l => l.locations,
+          _ => <LocationModel>[],
+        };
       },
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) {
+          return SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(widget.title, style: theme.textTheme.titleLarge),
+                if (widget.subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.subtitle!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                ],
+                if (widget.date != null)
+                  Text(
+                    widget.date!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                const Divider(height: 32),
+                _buildContent(theme),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildContent(ThemeData theme) {
-    return switch (changeType) {
+    return switch (widget.changeType) {
       ChangeType.transfer => _buildTransferDetail(theme),
       ChangeType.update => _buildUpdateDetail(theme),
       ChangeType.create => _buildCreatedDetail(theme),
@@ -172,8 +189,8 @@ class ChangesDetailSheet extends StatelessWidget {
   }
 
   Widget _buildTransferDetail(ThemeData theme) {
-    final fromId = oldValues?['current_location_id'] as String?;
-    final toId = newValues?['current_location_id'] as String?;
+    final fromId = widget.oldValues?['current_location_id'] as String?;
+    final toId = widget.newValues?['current_location_id'] as String?;
 
     String fromName = _getLocationName(fromId);
     String toName = _getLocationName(toId);
@@ -212,8 +229,8 @@ class ChangesDetailSheet extends StatelessWidget {
 
   Widget _buildUpdateDetail(ThemeData theme) {
     final changes = <Widget>[];
-    final oldVals = oldValues ?? {};
-    final newVals = newValues ?? {};
+    final oldVals = widget.oldValues ?? {};
+    final newVals = widget.newValues ?? {};
 
     final fieldsToCheck = [
       'cpu',
@@ -225,7 +242,7 @@ class ChangesDetailSheet extends StatelessWidget {
     ];
 
     // If we have old values, show diff (for history)
-    if (oldValues != null) {
+    if (widget.oldValues != null) {
       for (final field in fieldsToCheck) {
         final oldVal = oldVals[field]?.toString() ?? '';
         final newVal = newVals[field]?.toString() ?? '';
@@ -252,7 +269,7 @@ class ChangesDetailSheet extends StatelessWidget {
 
     if (changes.isEmpty) {
       return Text(
-        oldValues != null
+        widget.oldValues != null
             ? 'No field changes detected'
             : 'No changes specified',
         style: theme.textTheme.bodyMedium,
@@ -263,7 +280,7 @@ class ChangesDetailSheet extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          oldValues != null ? 'Changes' : 'Proposed Changes',
+          widget.oldValues != null ? 'Changes' : 'Proposed Changes',
           style: theme.textTheme.titleMedium,
         ),
         const SizedBox(height: 16),
@@ -273,7 +290,7 @@ class ChangesDetailSheet extends StatelessWidget {
   }
 
   Widget _buildCreatedDetail(ThemeData theme) {
-    final newVals = newValues ?? {};
+    final newVals = widget.newValues ?? {};
     final fields = <Widget>[];
 
     final fieldsToShow = {
@@ -296,12 +313,14 @@ class ChangesDetailSheet extends StatelessWidget {
     // Handle location
     final locationId = newVals['current_location_id'] as String?;
     if (locationId != null) {
-      fields.add(_buildValueRow('Location', _getLocationName(locationId), theme));
+      fields.add(
+        _buildValueRow('Location', _getLocationName(locationId), theme),
+      );
     }
 
     if (fields.isEmpty) {
       return Text(
-        oldValues != null
+        widget.oldValues != null
             ? 'Asset created with default values'
             : 'New asset with default values',
         style: theme.textTheme.bodyMedium,
@@ -312,7 +331,7 @@ class ChangesDetailSheet extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          oldValues != null ? 'Initial Values' : 'Proposed Values',
+          widget.oldValues != null ? 'Initial Values' : 'Proposed Values',
           style: theme.textTheme.titleMedium,
         ),
         const SizedBox(height: 16),
@@ -330,19 +349,16 @@ class ChangesDetailSheet extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.errorContainer.withOpacity(0.3),
+            color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                color: theme.colorScheme.error,
-              ),
+              Icon(Icons.warning_amber_rounded, color: theme.colorScheme.error),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  oldValues != null
+                  widget.oldValues != null
                       ? 'This asset was permanently deleted'
                       : 'This asset will be permanently deleted',
                   style: TextStyle(color: theme.colorScheme.error),
@@ -379,7 +395,9 @@ class ChangesDetailSheet extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withOpacity(0.3),
+                    color: theme.colorScheme.errorContainer.withValues(
+                      alpha: 0.3,
+                    ),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -396,7 +414,7 @@ class ChangesDetailSheet extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -412,8 +430,12 @@ class ChangesDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildValueRow(String label, String value, ThemeData theme,
-      {bool isNew = false}) {
+  Widget _buildValueRow(
+    String label,
+    String value,
+    ThemeData theme, {
+    bool isNew = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -431,10 +453,12 @@ class ChangesDetailSheet extends StatelessWidget {
           Expanded(
             child: isNew
                 ? Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(

@@ -274,7 +274,6 @@ class _RequestCard extends StatelessWidget {
     ChangesDetailSheet.showFromRequest(
       context,
       request: request,
-      locations: locations,
     );
   }
 }
