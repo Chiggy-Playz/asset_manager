@@ -10,8 +10,8 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
   List<AssetModel> _cachedAssets = [];
 
   AssetsBloc({required AssetsRepository assetsRepository})
-      : _assetsRepository = assetsRepository,
-        super(AssetsInitial()) {
+    : _assetsRepository = assetsRepository,
+      super(AssetsInitial()) {
     on<AssetsFetchRequested>(_onFetchRequested);
     on<AssetCreateRequested>(_onCreateRequested);
     on<AssetUpdateRequested>(_onUpdateRequested);
@@ -39,6 +39,17 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
   ) async {
     emit(AssetActionInProgress(_cachedAssets));
     try {
+      final tagValidation = await _assetsRepository.validateTagId(event.tagId);
+      if (tagValidation['valid'] != true) {
+        String error = 'Tag ID is not available';
+        if (tagValidation['exists_in_assets'] == true) {
+          error = 'Tag ID already exists';
+        } else if (tagValidation['exists_in_pending_requests'] == true) {
+          error = 'Tag ID is pending approval in another request';
+        }
+        throw Exception(error);
+      }
+
       await _assetsRepository.createAsset(
         tagId: event.tagId,
         cpu: event.cpu,

@@ -10,8 +10,8 @@ class AssetRequestsBloc extends Bloc<AssetRequestsEvent, AssetRequestsState> {
   List<AssetRequestModel> _cachedRequests = [];
 
   AssetRequestsBloc({required AssetRequestsRepository repository})
-      : _repository = repository,
-        super(AssetRequestsInitial()) {
+    : _repository = repository,
+      super(AssetRequestsInitial()) {
     on<MyRequestsFetchRequested>(_onMyRequestsFetch);
     on<PendingRequestsFetchRequested>(_onPendingRequestsFetch);
     on<AllRequestsFetchRequested>(_onAllRequestsFetch);
@@ -85,14 +85,35 @@ class AssetRequestsBloc extends Bloc<AssetRequestsEvent, AssetRequestsState> {
     AssetRequestApproveRequested event,
     Emitter<AssetRequestsState> emit,
   ) async {
-    emit(AssetRequestActionInProgress(_cachedRequests, actionRequestId: event.requestId));
+    emit(
+      AssetRequestActionInProgress(
+        _cachedRequests,
+        actionRequestId: event.requestId,
+      ),
+    );
     try {
-      await _repository.approveRequest(event.requestId, notes: event.notes);
-      emit(AssetRequestActionSuccess(_cachedRequests, 'Request approved'));
+      final result = await _repository.approveRequest(
+        event.requestId,
+        notes: event.notes,
+      );
+
+      // Check for auto-rejection (duplicate tag_id race condition)
+      if (result['auto_rejected'] == true) {
+        throw Exception(result['error'] ?? 'Request was auto-rejected');
+      }
+
+      emit(
+        AssetRequestActionSuccess(
+          _cachedRequests,
+          'Request approved and applied',
+        ),
+      );
+
       add(PendingRequestsFetchRequested());
     } catch (e) {
       emit(AssetRequestsError(e.toString()));
-      emit(AssetRequestsLoaded(_cachedRequests));
+      // Still refresh the list in case the database state changed
+      add(PendingRequestsFetchRequested());
     }
   }
 
@@ -100,7 +121,12 @@ class AssetRequestsBloc extends Bloc<AssetRequestsEvent, AssetRequestsState> {
     AssetRequestRejectRequested event,
     Emitter<AssetRequestsState> emit,
   ) async {
-    emit(AssetRequestActionInProgress(_cachedRequests, actionRequestId: event.requestId));
+    emit(
+      AssetRequestActionInProgress(
+        _cachedRequests,
+        actionRequestId: event.requestId,
+      ),
+    );
     try {
       await _repository.rejectRequest(event.requestId, notes: event.notes);
       emit(AssetRequestActionSuccess(_cachedRequests, 'Request rejected'));

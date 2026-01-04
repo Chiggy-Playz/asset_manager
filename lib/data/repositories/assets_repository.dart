@@ -7,7 +7,7 @@ class AssetsRepository {
   final SupabaseClient _client;
 
   AssetsRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   Future<List<AssetModel>> fetchAssets() async {
     final response = await _client
@@ -15,9 +15,7 @@ class AssetsRepository {
         .select('*, locations(name)')
         .order('tag_id', ascending: true);
 
-    return (response as List)
-        .map((json) => AssetModel.fromJson(json))
-        .toList();
+    return (response as List).map((json) => AssetModel.fromJson(json)).toList();
   }
 
   Future<AssetModel?> fetchAsset(String id) async {
@@ -41,16 +39,20 @@ class AssetsRepository {
     String? modelNumber,
     String? currentLocationId,
   }) async {
-    final response = await _client.from('assets').insert({
-      'tag_id': tagId,
-      'cpu': cpu,
-      'generation': generation,
-      'ram': ram,
-      'storage': storage,
-      'serial_number': serialNumber,
-      'model_number': modelNumber,
-      'current_location_id': currentLocationId,
-    }).select('*, locations(name)').single();
+    final response = await _client
+        .from('assets')
+        .insert({
+          'tag_id': tagId,
+          'cpu': cpu,
+          'generation': generation,
+          'ram': ram,
+          'storage': storage,
+          'serial_number': serialNumber,
+          'model_number': modelNumber,
+          'current_location_id': currentLocationId,
+        })
+        .select('*, locations(name)')
+        .single();
 
     return AssetModel.fromJson(response);
   }
@@ -111,5 +113,18 @@ class AssetsRepository {
     return (response as List)
         .map((json) => AssetAuditLogModel.fromJson(json))
         .toList();
+  }
+
+  /// Validate tag_id uniqueness before creating a request
+  Future<Map<String, dynamic>> validateTagId(
+    String tagId, {
+    String? excludeAssetId,
+  }) async {
+    final result = await _client.rpc(
+      'validate_tag_id',
+      params: {'p_tag_id': tagId, 'p_exclude_asset_id': excludeAssetId},
+    );
+
+    return result as Map<String, dynamic>;
   }
 }

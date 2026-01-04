@@ -88,32 +88,39 @@ class AssetRequestsRepository {
     return AssetRequestModel.fromJson(response);
   }
 
-  /// Approve a request (admin only)
-  Future<void> approveRequest(String requestId, {String? notes}) async {
-    final userId = _supabase.auth.currentUser?.id;
+  /// Approve and apply a request in one step (admin only)
+  /// Returns the result including asset_id on success, or auto_rejected on conflict
+  Future<Map<String, dynamic>> approveRequest(
+    String requestId, {
+    String? notes,
+  }) async {
+    final result = await _supabase.rpc('approve_and_apply_request', params: {
+      'p_request_id': requestId,
+      'p_notes': notes,
+    });
 
-    await _supabase
-        .from('asset_requests')
-        .update({
-          'status': 'approved',
-          'reviewed_by': userId,
-          'review_notes': notes,
-        })
-        .eq('id', requestId);
+    final response = result as Map<String, dynamic>;
+
+    // Auto-rejection is a valid response (race condition with duplicate tag_id)
+    // Don't throw, let the caller handle it
+    if (response['success'] != true && response['auto_rejected'] != true) {
+      throw Exception(response['error'] ?? 'Failed to approve request');
+    }
+
+    return response;
   }
 
   /// Reject a request (admin only)
   Future<void> rejectRequest(String requestId, {String? notes}) async {
-    final userId = _supabase.auth.currentUser?.id;
+    final result = await _supabase.rpc('reject_request', params: {
+      'p_request_id': requestId,
+      'p_notes': notes,
+    });
 
-    await _supabase
-        .from('asset_requests')
-        .update({
-          'status': 'rejected',
-          'reviewed_by': userId,
-          'review_notes': notes,
-        })
-        .eq('id', requestId);
+    final response = result as Map<String, dynamic>;
+    if (response['success'] != true) {
+      throw Exception(response['error'] ?? 'Failed to reject request');
+    }
   }
 
   /// Delete a request (admin only)
