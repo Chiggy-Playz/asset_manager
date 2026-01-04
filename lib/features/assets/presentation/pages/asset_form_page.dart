@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../data/models/asset_model.dart';
-import '../../../../router/routes.dart';
 import '../../../admin/bloc/locations_bloc.dart';
 import '../../../admin/bloc/locations_event.dart';
 import '../../../admin/bloc/locations_state.dart';
@@ -86,6 +85,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (widget.isEditing) {
+      // Don't update location here - use Transfer instead
       context.read<AssetsBloc>().add(AssetUpdateRequested(
             id: widget.assetId!,
             cpu: _cpuController.text.isEmpty ? null : _cpuController.text,
@@ -101,7 +101,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
             modelNumber: _modelNumberController.text.isEmpty
                 ? null
                 : _modelNumberController.text,
-            currentLocationId: _selectedLocationId,
+            currentLocationId: _selectedLocationId, // Keep original location
           ));
     } else {
       context.read<AssetsBloc>().add(AssetCreateRequested(
@@ -131,7 +131,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message)),
           );
-          context.go(Routes.assets);
+          context.pop();
         } else if (state is AssetsError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -235,9 +235,12 @@ class _AssetFormPageState extends State<AssetFormPage> {
 
                     return DropdownButtonFormField<String>(
                       initialValue: _selectedLocationId,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Location',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        helperText: widget.isEditing
+                            ? 'Use Transfer button to change location'
+                            : null,
                       ),
                       items: locations
                           .map((loc) => DropdownMenuItem(
@@ -245,11 +248,13 @@ class _AssetFormPageState extends State<AssetFormPage> {
                                 child: Text(loc.name),
                               ))
                           .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedLocationId = value;
-                        });
-                      },
+                      onChanged: widget.isEditing
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _selectedLocationId = value;
+                              });
+                            },
                     );
                   },
                 ),

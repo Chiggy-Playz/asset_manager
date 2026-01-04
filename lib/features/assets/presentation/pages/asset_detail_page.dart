@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../data/models/asset_audit_log_model.dart';
 import '../../../../data/models/asset_model.dart';
+import '../../../../data/models/location_model.dart';
 import '../../../../data/repositories/assets_repository.dart';
 import '../../../../router/routes.dart';
+import '../../../admin/bloc/locations_bloc.dart';
+import '../../../admin/bloc/locations_event.dart';
+import '../../../admin/bloc/locations_state.dart';
 import '../../bloc/assets_bloc.dart';
 import '../../bloc/assets_event.dart';
 import '../../bloc/assets_state.dart';
+import '../widgets/history_detail_sheet.dart';
 import '../widgets/transfer_dialog.dart';
 
 class AssetDetailPage extends StatefulWidget {
@@ -28,6 +34,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   @override
   void initState() {
     super.initState();
+    context.read<LocationsBloc>().add(LocationsFetchRequested());
     _loadAuditHistory();
   }
 
@@ -142,7 +149,11 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                       style: theme.textTheme.titleMedium),
                   const Divider(),
                   _buildInfoRow('Tag ID', '#${asset.tagId}'),
-                  _buildInfoRow('Serial Number', asset.serialNumber ?? '-'),
+                  _buildInfoRow(
+                    'Serial Number',
+                    asset.serialNumber ?? '-',
+                    copyable: asset.serialNumber != null,
+                  ),
                   _buildInfoRow('Model Number', asset.modelNumber ?? '-'),
                   _buildInfoRow('CPU', asset.cpu ?? '-'),
                   _buildInfoRow('Generation', asset.generation ?? '-'),
@@ -176,7 +187,19 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                       child: Text('No history available'),
                     )
                   else
-                    ..._auditLogs!.map((log) => _buildAuditLogItem(context, log)),
+                    BlocBuilder<LocationsBloc, LocationsState>(
+                      builder: (context, locState) {
+                        final locations = locState is LocationsLoaded
+                            ? locState.locations
+                            : <LocationModel>[];
+                        return Column(
+                          children: _auditLogs!
+                              .map((log) =>
+                                  _buildAuditLogItem(context, log, locations))
+                              .toList(),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
@@ -187,7 +210,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {bool copyable = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -200,18 +223,56 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: copyable && value != '-'
+                ? InkWell(
+                    onTap: () => _copyToClipboard(value),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 2, horizontal: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(child: Text(value)),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.copy,
+                            size: 14,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : Text(value),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAuditLogItem(BuildContext context, AssetAuditLogModel log) {
+  void _copyToClipboard(String value) {
+    Clipboard.setData(ClipboardData(text: value));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  Widget _buildAuditLogItem(
+    BuildContext context,
+    AssetAuditLogModel log,
+    List<LocationModel> locations,
+  ) {
     final theme = Theme.of(context);
 
     IconData icon;
     Color color;
     String title;
+    String? subtitle;
 
     switch (log.action) {
       case 'created':
@@ -226,6 +287,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
         icon = Icons.swap_horiz;
         color = Colors.orange;
         title = 'Transferred';
+        subtitle = _getTransferDescription(log, locations);
       case 'deleted':
         icon = Icons.delete;
         color = Colors.red;
@@ -236,40 +298,86 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
         title = log.action;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'by ${log.userName ?? 'Unknown'} on ${_formatDate(log.createdAt)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-                if (log.isTransferred && log.oldValues != null && log.newValues != null)
+    final localTime = log.createdAt.toLocal();
+
+    return InkWell(
+      onTap: () => HistoryDetailSheet.show(context, log: log, locations: locations),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Location changed',
-                    style: theme.textTheme.bodySmall,
+                    title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-              ],
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  Text(
+                    'by ${log.userName ?? 'Unknown'} on ${_formatDate(localTime)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.outline,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String? _getTransferDescription(
+    AssetAuditLogModel log,
+    List<LocationModel> locations,
+  ) {
+    if (log.oldValues == null || log.newValues == null) return null;
+
+    final fromId = log.oldValues!['current_location_id'] as String?;
+    final toId = log.newValues!['current_location_id'] as String?;
+
+    String fromName = 'Unknown';
+    String toName = 'Unknown';
+
+    if (fromId != null) {
+      try {
+        fromName = locations.firstWhere((l) => l.id == fromId).name;
+      } catch (_) {
+        fromName = 'Unknown';
+      }
+    } else {
+      fromName = 'No Location';
+    }
+
+    if (toId != null) {
+      try {
+        toName = locations.firstWhere((l) => l.id == toId).name;
+      } catch (_) {
+        toName = 'Unknown';
+      }
+    } else {
+      toName = 'No Location';
+    }
+
+    return '$fromName → $toName';
   }
 
   String _formatDate(DateTime date) {
