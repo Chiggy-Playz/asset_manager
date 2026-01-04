@@ -1,7 +1,5 @@
 import 'package:asset_manager/features/admin/bloc/locations_bloc.dart';
 import 'package:asset_manager/features/admin/bloc/locations_state.dart';
-import 'package:asset_manager/features/profile/bloc/profile_bloc.dart';
-import 'package:asset_manager/features/profile/bloc/profile_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -73,7 +71,7 @@ class ChangesDetailSheet extends StatefulWidget {
             : null,
         date: dateFormat.format(request.requestedAt.toLocal()),
         changeType: _requestTypeToChangeType(request.requestType),
-        oldValues: null, // Requests don't have old values
+        oldValues: request.currentData,
         newValues: request.requestData,
       ),
     );

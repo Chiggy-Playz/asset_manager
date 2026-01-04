@@ -40,8 +40,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
 
   Future<void> _loadAuditHistory() async {
     try {
-      final logs =
-          await AssetsRepository().fetchAssetHistory(widget.assetId);
+      final logs = await AssetsRepository().fetchAssetHistory(widget.assetId);
       if (mounted) {
         setState(() {
           _auditLogs = logs;
@@ -62,9 +61,9 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     return BlocConsumer<AssetsBloc, AssetsState>(
       listener: (context, state) {
         if (state is AssetActionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
           if (state.message == 'Asset deleted') {
             context.go(Routes.assets);
           } else {
@@ -130,82 +129,98 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     );
   }
 
+  Future<void> _onRefresh() async {
+    context.read<AssetsBloc>().add(AssetsFetchRequested());
+    await _loadAuditHistory();
+  }
+
   Widget _buildContent(BuildContext context, AssetModel asset) {
     final theme = Theme.of(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Asset Info Card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Asset Information',
-                      style: theme.textTheme.titleMedium),
-                  const Divider(),
-                  _buildInfoRow('Tag ID', asset.tagId),
-                  _buildInfoRow(
-                    'Serial Number',
-                    asset.serialNumber ?? '-',
-                    copyable: asset.serialNumber != null,
-                  ),
-                  _buildInfoRow('Model Number', asset.modelNumber ?? '-'),
-                  _buildInfoRow('CPU', asset.cpu ?? '-'),
-                  _buildInfoRow('Generation', asset.generation ?? '-'),
-                  _buildInfoRow('RAM', asset.ram ?? '-'),
-                  _buildInfoRow('Storage', asset.storage ?? '-'),
-                  _buildInfoRow('Location', asset.locationName ?? '-'),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Audit History Card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('History', style: theme.textTheme.titleMedium),
-                  const Divider(),
-                  if (_loadingHistory)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else if (_auditLogs == null || _auditLogs!.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('No history available'),
-                    )
-                  else
-                    BlocBuilder<LocationsBloc, LocationsState>(
-                      builder: (context, locState) {
-                        final locations = locState is LocationsLoaded
-                            ? locState.locations
-                            : <LocationModel>[];
-                        return Column(
-                          children: _auditLogs!
-                              .map((log) =>
-                                  _buildAuditLogItem(context, log, locations))
-                              .toList(),
-                        );
-                      },
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Asset Info Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Asset Information',
+                      style: theme.textTheme.titleMedium,
                     ),
-                ],
+                    const Divider(),
+                    _buildInfoRow('Tag ID', asset.tagId),
+                    _buildInfoRow(
+                      'Serial Number',
+                      asset.serialNumber ?? '-',
+                      copyable: asset.serialNumber != null,
+                    ),
+                    _buildInfoRow('Model Number', asset.modelNumber ?? '-'),
+                    _buildInfoRow('CPU', asset.cpu ?? '-'),
+                    _buildInfoRow('Generation', asset.generation ?? '-'),
+                    _buildInfoRow('RAM', asset.ram ?? '-'),
+                    _buildInfoRow('Storage', asset.storage ?? '-'),
+                    _buildInfoRow('Location', asset.locationName ?? '-'),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 80),
-        ],
+            const SizedBox(height: 16),
+            // Audit History Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('History', style: theme.textTheme.titleMedium),
+                    const Divider(),
+                    if (_loadingHistory)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (_auditLogs == null || _auditLogs!.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('No history available'),
+                      )
+                    else
+                      BlocBuilder<LocationsBloc, LocationsState>(
+                        builder: (context, locState) {
+                          final locations = locState is LocationsLoaded
+                              ? locState.locations
+                              : <LocationModel>[];
+                          return Column(
+                            children: _auditLogs!
+                                .map(
+                                  (log) => _buildAuditLogItem(
+                                    context,
+                                    log,
+                                    locations,
+                                  ),
+                                )
+                                .toList(),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
     );
   }
@@ -230,7 +245,9 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                     borderRadius: BorderRadius.circular(4),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 2, horizontal: 4),
+                        vertical: 2,
+                        horizontal: 4,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -301,7 +318,11 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final localTime = log.createdAt.toLocal();
 
     return InkWell(
-      onTap: () => ChangesDetailSheet.showFromAuditLog(context, log: log, locations: locations),
+      onTap: () => ChangesDetailSheet.showFromAuditLog(
+        context,
+        log: log,
+        locations: locations,
+      ),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
@@ -321,10 +342,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                     ),
                   ),
                   if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    Text(subtitle, style: theme.textTheme.bodySmall),
                   Text(
                     'by ${log.userName ?? 'Unknown'} on ${_formatDate(localTime)}',
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -405,8 +423,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
         currentLocationId: asset.currentLocationId,
         onTransfer: (locationId) {
           context.read<AssetsBloc>().add(
-                AssetTransferRequested(id: asset.id, toLocationId: locationId),
-              );
+            AssetTransferRequested(id: asset.id, toLocationId: locationId),
+          );
         },
       ),
     );
