@@ -7,6 +7,7 @@ class AssetRequestModel {
   final String? assetId;
   final AssetRequestType requestType;
   final Map<String, dynamic> requestData;
+  final Map<String, dynamic>? currentData;
   final String? requestedBy;
   final DateTime requestedAt;
   final AssetRequestStatus status;
@@ -24,6 +25,7 @@ class AssetRequestModel {
     this.assetId,
     required this.requestType,
     required this.requestData,
+    required this.currentData,
     this.requestedBy,
     required this.requestedAt,
     required this.status,
@@ -46,6 +48,7 @@ class AssetRequestModel {
       assetId: json['asset_id'] as String?,
       requestType: _parseRequestType(json['request_type'] as String),
       requestData: json['request_data'] as Map<String, dynamic>? ?? {},
+      currentData: json['current_data'] as Map<String, dynamic>?,
       requestedBy: json['requested_by'] as String?,
       requestedAt: DateTime.parse(json['requested_at'] as String),
       status: _parseStatus(json['status'] as String),
@@ -116,6 +119,7 @@ class AssetRequestModel {
   bool get isPending => status == AssetRequestStatus.pending;
   bool get isApproved => status == AssetRequestStatus.approved;
   bool get isRejected => status == AssetRequestStatus.rejected;
+
   bool get isCreate => requestType == AssetRequestType.create;
   bool get isUpdate => requestType == AssetRequestType.update;
   bool get isDelete => requestType == AssetRequestType.delete;

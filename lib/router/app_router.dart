@@ -12,7 +12,7 @@ import '../features/admin/presentation/pages/users_page.dart';
 import '../features/assets/presentation/pages/asset_detail_page.dart';
 import '../features/assets/presentation/pages/asset_form_page.dart';
 import '../features/assets/presentation/pages/assets_page.dart';
-import '../features/requests/presentation/pages/my_requests_page.dart';
+import '../features/requests/presentation/pages/requests_page.dart';
 import '../features/auth/bloc/auth_bloc.dart';
 import '../features/auth/bloc/auth_state.dart';
 import '../features/auth/presentation/pages/login_page.dart';
@@ -174,7 +174,7 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: Routes.requests,
-                builder: (context, state) => const MyRequestsPage(),
+                builder: (context, state) => const RequestsPage(),
               ),
             ],
           ),

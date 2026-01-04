@@ -9,7 +9,7 @@ class FieldOptionsRepository {
     final response = await _supabase
         .from('field_options')
         .select()
-        .order('display_order');
+        .order('field_name');
 
     return (response as List)
         .map((json) => FieldOptionModel.fromJson(json))

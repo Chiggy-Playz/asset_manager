@@ -16,8 +16,8 @@ class AdminPage extends StatelessWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.assignment_outlined),
-            title: const Text('Review Requests'),
-            subtitle: const Text('Approve or reject asset requests'),
+            title: const Text('All Requests'),
+            subtitle: const Text('View all asset request history'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go(Routes.adminRequests),
           ),

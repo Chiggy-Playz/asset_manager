@@ -4,6 +4,11 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../data/models/asset_request_model.dart';
+import '../../../../data/models/location_model.dart';
+import '../../../../shared/widgets/changes_detail_sheet.dart';
+import '../../../admin/bloc/locations_bloc.dart';
+import '../../../admin/bloc/locations_event.dart';
+import '../../../admin/bloc/locations_state.dart';
 import '../../bloc/asset_requests_bloc.dart';
 import '../../bloc/asset_requests_event.dart';
 import '../../bloc/asset_requests_state.dart';
@@ -20,6 +25,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
   void initState() {
     super.initState();
     context.read<AssetRequestsBloc>().add(MyRequestsFetchRequested());
+    context.read<LocationsBloc>().add(LocationsFetchRequested());
   }
 
   @override
@@ -70,34 +76,45 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
             );
           }
 
-          return ResponsiveBuilder(
-            builder: (context, screenSize) {
-              final content = RefreshIndicator(
-                onRefresh: () async {
-                  context
-                      .read<AssetRequestsBloc>()
-                      .add(MyRequestsFetchRequested());
+          return BlocBuilder<LocationsBloc, LocationsState>(
+            builder: (context, locState) {
+              final locations = locState is LocationsLoaded
+                  ? locState.locations
+                  : <LocationModel>[];
+
+              return ResponsiveBuilder(
+                builder: (context, screenSize) {
+                  final content = RefreshIndicator(
+                    onRefresh: () async {
+                      context
+                          .read<AssetRequestsBloc>()
+                          .add(MyRequestsFetchRequested());
+                    },
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: requests.length,
+                      itemBuilder: (context, index) {
+                        final request = requests[index];
+                        return _RequestCard(
+                          request: request,
+                          locations: locations,
+                        );
+                      },
+                    ),
+                  );
+
+                  if (screenSize == ScreenSize.mobile) {
+                    return content;
+                  }
+
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: content,
+                    ),
+                  );
                 },
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: requests.length,
-                  itemBuilder: (context, index) {
-                    final request = requests[index];
-                    return _RequestCard(request: request);
-                  },
-                ),
-              );
-
-              if (screenSize == ScreenSize.mobile) {
-                return content;
-              }
-
-              return Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: content,
-                ),
               );
             },
           );
@@ -109,8 +126,12 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
 
 class _RequestCard extends StatelessWidget {
   final AssetRequestModel request;
+  final List<LocationModel> locations;
 
-  const _RequestCard({required this.request});
+  const _RequestCard({
+    required this.request,
+    required this.locations,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +192,7 @@ class _RequestCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
@@ -250,92 +271,10 @@ class _RequestCard extends StatelessWidget {
   }
 
   void _showRequestDetail(BuildContext context) {
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return SingleChildScrollView(
-              controller: scrollController,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'Request Details',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const Divider(height: 32),
-                  _buildDetailRow('Type', request.displayType),
-                  _buildDetailRow('Status', request.displayStatus),
-                  if (request.assetTagId != null)
-                    _buildDetailRow('Asset', request.assetTagId!),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Requested Changes:',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  ...request.requestData.entries
-                      .where((e) => e.value != null)
-                      .map((e) => _buildDetailRow(
-                            _formatKey(e.key),
-                            e.value.toString(),
-                          )),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
-        );
-      },
+    ChangesDetailSheet.showFromRequest(
+      context,
+      request: request,
+      locations: locations,
     );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  String _formatKey(String key) {
-    return key
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((w) =>
-            w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : w)
-        .join(' ');
   }
 }

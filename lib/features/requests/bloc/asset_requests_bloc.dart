@@ -14,6 +14,7 @@ class AssetRequestsBloc extends Bloc<AssetRequestsEvent, AssetRequestsState> {
         super(AssetRequestsInitial()) {
     on<MyRequestsFetchRequested>(_onMyRequestsFetch);
     on<PendingRequestsFetchRequested>(_onPendingRequestsFetch);
+    on<AllRequestsFetchRequested>(_onAllRequestsFetch);
     on<AssetRequestCreateRequested>(_onCreateRequest);
     on<AssetRequestApproveRequested>(_onApproveRequest);
     on<AssetRequestRejectRequested>(_onRejectRequest);
@@ -40,6 +41,20 @@ class AssetRequestsBloc extends Bloc<AssetRequestsEvent, AssetRequestsState> {
     emit(AssetRequestsLoading());
     try {
       final requests = await _repository.fetchPendingRequests();
+      _cachedRequests = requests;
+      emit(AssetRequestsLoaded(requests));
+    } catch (e) {
+      emit(AssetRequestsError(e.toString()));
+    }
+  }
+
+  Future<void> _onAllRequestsFetch(
+    AllRequestsFetchRequested event,
+    Emitter<AssetRequestsState> emit,
+  ) async {
+    emit(AssetRequestsLoading());
+    try {
+      final requests = await _repository.fetchAllRequests();
       _cachedRequests = requests;
       emit(AssetRequestsLoaded(requests));
     } catch (e) {

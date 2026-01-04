@@ -3,7 +3,6 @@ class FieldOptionModel {
   final String fieldName;
   final List<String> options;
   final bool isRequired;
-  final int displayOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -12,7 +11,6 @@ class FieldOptionModel {
     required this.fieldName,
     required this.options,
     required this.isRequired,
-    required this.displayOrder,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -25,7 +23,6 @@ class FieldOptionModel {
       fieldName: json['field_name'] as String,
       options: optionsJson.map((e) => e as String).toList(),
       isRequired: json['is_required'] as bool? ?? false,
-      displayOrder: json['display_order'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -37,7 +34,6 @@ class FieldOptionModel {
       'field_name': fieldName,
       'options': options,
       'is_required': isRequired,
-      'display_order': displayOrder,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -48,7 +44,6 @@ class FieldOptionModel {
     String? fieldName,
     List<String>? options,
     bool? isRequired,
-    int? displayOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -57,7 +52,6 @@ class FieldOptionModel {
       fieldName: fieldName ?? this.fieldName,
       options: options ?? this.options,
       isRequired: isRequired ?? this.isRequired,
-      displayOrder: displayOrder ?? this.displayOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -17,7 +17,6 @@ CREATE TABLE field_options (
   field_name text NOT NULL UNIQUE,  -- 'cpu', 'generation', 'ram', 'storage', 'model'
   options jsonb NOT NULL DEFAULT '[]',  -- e.g., ['4GB', '8GB', '16GB']
   is_required boolean NOT NULL DEFAULT false,
-  display_order int NOT NULL DEFAULT 0,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -43,12 +42,12 @@ ON field_options FOR DELETE
 USING (is_admin());
 
 -- Seed default field options (empty arrays, admin will populate later)
-INSERT INTO field_options (field_name, display_order) VALUES
-  ('cpu', 1),
-  ('generation', 2),
-  ('ram', 3),
-  ('storage', 4),
-  ('model', 5);
+INSERT INTO field_options (field_name) VALUES
+  ('cpu'),
+  ('generation'),
+  ('ram'),
+  ('storage'),
+  ('model');
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_field_options_updated_at()
@@ -76,6 +75,7 @@ CREATE TABLE asset_requests (
   asset_id uuid REFERENCES assets(id) ON DELETE CASCADE,  -- null for create requests
   request_type text NOT NULL CHECK (request_type IN ('create', 'update', 'delete', 'transfer')),
   request_data jsonb NOT NULL,  -- proposed changes
+  current_data jsonb,  -- current asset data for comparison
   requested_by uuid REFERENCES profiles(id) ON DELETE SET NULL,
   requested_at timestamptz DEFAULT now(),
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
@@ -139,80 +139,36 @@ USING (is_admin());
 -- 5. Trigger for auto-applying approved requests
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION apply_approved_request()
+CREATE OR REPLACE FUNCTION asset_request_populate_current_data()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-SECURITY DEFINER
 AS $$
-DECLARE
-  v_tag_id text;
-  v_cpu text;
-  v_generation text;
-  v_ram text;
-  v_storage text;
-  v_serial_number text;
-  v_model_number text;
-  v_current_location_id uuid;
 BEGIN
-  -- Only process when status changes from 'pending' to 'approved'
-  IF NEW.status = 'approved' AND OLD.status = 'pending' THEN
-    -- Set reviewed_at timestamp
-    NEW.reviewed_at = now();
-
-    CASE NEW.request_type
-      WHEN 'create' THEN
-        -- Extract values from request_data
-        v_tag_id := NEW.request_data->>'tag_id';
-        v_cpu := NEW.request_data->>'cpu';
-        v_generation := NEW.request_data->>'generation';
-        v_ram := NEW.request_data->>'ram';
-        v_storage := NEW.request_data->>'storage';
-        v_serial_number := NEW.request_data->>'serial_number';
-        v_model_number := NEW.request_data->>'model_number';
-        v_current_location_id := (NEW.request_data->>'current_location_id')::uuid;
-
-        INSERT INTO assets (tag_id, cpu, generation, ram, storage, serial_number, model_number, current_location_id)
-        VALUES (v_tag_id, v_cpu, v_generation, v_ram, v_storage, v_serial_number, v_model_number, v_current_location_id);
-
-      WHEN 'update' THEN
-        UPDATE assets SET
-          cpu = COALESCE(NEW.request_data->>'cpu', cpu),
-          generation = COALESCE(NEW.request_data->>'generation', generation),
-          ram = COALESCE(NEW.request_data->>'ram', ram),
-          storage = COALESCE(NEW.request_data->>'storage', storage),
-          serial_number = COALESCE(NEW.request_data->>'serial_number', serial_number),
-          model_number = COALESCE(NEW.request_data->>'model_number', model_number)
-        WHERE id = NEW.asset_id;
-
-      WHEN 'delete' THEN
-        DELETE FROM assets WHERE id = NEW.asset_id;
-
-      WHEN 'transfer' THEN
-        v_current_location_id := (NEW.request_data->>'current_location_id')::uuid;
-        UPDATE assets SET current_location_id = v_current_location_id
-        WHERE id = NEW.asset_id;
-
-    END CASE;
-  END IF;
-
-  -- Also set reviewed_at when rejecting
-  IF NEW.status = 'rejected' AND OLD.status = 'pending' THEN
-    NEW.reviewed_at = now();
-  END IF;
-
-  RETURN NEW;
+SELECT jsonb_build_object(
+      'cpu', cpu,
+      'generation', generation,
+      'ram', ram,
+      'storage', storage,
+      'serial_number', serial_number,
+      'model_number', model_number
+    )
+INTO NEW.current_data
+FROM assets
+WHERE id = NEW.asset_id;
+RETURN NEW;
 END;
 $$;
 
-CREATE TRIGGER on_request_status_change
-  BEFORE UPDATE ON asset_requests
+CREATE TRIGGER asset_request_before_insert
+  BEFORE INSERT ON asset_requests
   FOR EACH ROW
-  EXECUTE FUNCTION apply_approved_request();
+  WHEN (NEW.request_type = 'update')
+  EXECUTE FUNCTION asset_request_populate_current_data();
 
 -- migrate:down
 
-DROP TRIGGER on_request_status_change ON asset_requests;
-DROP FUNCTION apply_approved_request();
+DROP TRIGGER asset_request_before_insert ON asset_requests;
+DROP FUNCTION asset_request_populate_current_data;
 
 DROP POLICY "Admins can delete requests" ON asset_requests;
 DROP POLICY "Admins can update requests" ON asset_requests;
