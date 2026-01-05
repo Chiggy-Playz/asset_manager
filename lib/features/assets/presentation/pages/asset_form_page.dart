@@ -35,6 +35,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _tagIdController = TextEditingController();
   final _serialNumberController = TextEditingController();
+  final _requestNotesController = TextEditingController();
 
   // Dropdown selections
   String? _selectedCpu;
@@ -92,6 +93,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
   void dispose() {
     _tagIdController.dispose();
     _serialNumberController.dispose();
+    _requestNotesController.dispose();
     super.dispose();
   }
 
@@ -114,39 +116,48 @@ class _AssetFormPageState extends State<AssetFormPage> {
     if (_isAdmin) {
       // Admin: Direct modification
       if (widget.isEditing) {
-        context.read<AssetsBloc>().add(AssetUpdateRequested(
-              id: widget.assetId!,
-              cpu: _selectedCpu,
-              generation: _selectedGeneration,
-              ram: _selectedRam,
-              storage: _selectedStorage,
-              serialNumber: _serialNumberController.text.isEmpty
-                  ? null
-                  : _serialNumberController.text,
-              modelNumber: _selectedModel,
-              currentLocationId: _selectedLocationId,
-            ));
+        context.read<AssetsBloc>().add(
+          AssetUpdateRequested(
+            id: widget.assetId!,
+            cpu: _selectedCpu,
+            generation: _selectedGeneration,
+            ram: _selectedRam,
+            storage: _selectedStorage,
+            serialNumber: _serialNumberController.text.isEmpty
+                ? null
+                : _serialNumberController.text,
+            modelNumber: _selectedModel,
+            currentLocationId: _selectedLocationId,
+          ),
+        );
       } else {
-        context.read<AssetsBloc>().add(AssetCreateRequested(
-              tagId: _tagIdController.text,
-              cpu: _selectedCpu,
-              generation: _selectedGeneration,
-              ram: _selectedRam,
-              storage: _selectedStorage,
-              serialNumber: _serialNumberController.text.isEmpty
-                  ? null
-                  : _serialNumberController.text,
-              modelNumber: _selectedModel,
-              currentLocationId: _selectedLocationId,
-            ));
+        context.read<AssetsBloc>().add(
+          AssetCreateRequested(
+            tagId: _tagIdController.text,
+            cpu: _selectedCpu,
+            generation: _selectedGeneration,
+            ram: _selectedRam,
+            storage: _selectedStorage,
+            serialNumber: _serialNumberController.text.isEmpty
+                ? null
+                : _serialNumberController.text,
+            modelNumber: _selectedModel,
+            currentLocationId: _selectedLocationId,
+          ),
+        );
       }
     } else {
       // User: Submit request for approval
-      context.read<AssetRequestsBloc>().add(AssetRequestCreateRequested(
-            requestType: widget.isEditing ? 'update' : 'create',
-            assetId: widget.assetId,
-            requestData: requestData,
-          ));
+      context.read<AssetRequestsBloc>().add(
+        AssetRequestCreateRequested(
+          requestType: widget.isEditing ? 'update' : 'create',
+          assetId: widget.assetId,
+          requestData: requestData,
+          requestNotes: _requestNotesController.text.isEmpty
+          ? null
+          : _requestNotesController.text,
+        ),
+      );
     }
   }
 
@@ -157,9 +168,9 @@ class _AssetFormPageState extends State<AssetFormPage> {
         BlocListener<AssetsBloc, AssetsState>(
           listener: (context, state) {
             if (state is AssetActionSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
               context.pop();
             } else if (state is AssetsError) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -174,9 +185,9 @@ class _AssetFormPageState extends State<AssetFormPage> {
         BlocListener<AssetRequestsBloc, AssetRequestsState>(
           listener: (context, state) {
             if (state is AssetRequestActionSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
               context.pop();
             } else if (state is AssetRequestsError) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -217,7 +228,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
       builder: (context, assetsState) {
         return BlocBuilder<AssetRequestsBloc, AssetRequestsState>(
           builder: (context, requestsState) {
-            final isLoading = assetsState is AssetActionInProgress ||
+            final isLoading =
+                assetsState is AssetActionInProgress ||
                 requestsState is AssetRequestActionInProgress;
 
             return BlocBuilder<FieldOptionsBloc, FieldOptionsState>(
@@ -293,7 +305,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
                               setState(() => _selectedGeneration = v),
                           isRequired:
                               fieldOptions?.isFieldRequired('generation') ??
-                                  false,
+                              false,
                         ),
                         const SizedBox(height: 16),
 
@@ -337,10 +349,12 @@ class _AssetFormPageState extends State<AssetFormPage> {
                                     : null,
                               ),
                               items: locations
-                                  .map((loc) => DropdownMenuItem(
-                                        value: loc.id,
-                                        child: Text(loc.name),
-                                      ))
+                                  .map(
+                                    (loc) => DropdownMenuItem(
+                                      value: loc.id,
+                                      child: Text(loc.name),
+                                    ),
+                                  )
                                   .toList(),
                               onChanged: widget.isEditing
                                   ? null
@@ -354,33 +368,47 @@ class _AssetFormPageState extends State<AssetFormPage> {
                         ),
                         const SizedBox(height: 24),
 
+                        // Request notes for non-admin users
+                        if (!_isAdmin) ...[
+                          TextFormField(
+                            controller: _requestNotesController,
+                            decoration: const InputDecoration(
+                              labelText: 'Request Notes',
+                              border: OutlineInputBorder(),
+                              hintText:
+                                  'Provide additional details for your request',
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
                         // Info banner for non-admin users
                         if (!_isAdmin)
                           Container(
                             padding: const EdgeInsets.all(12),
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.info_outline,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimaryContainer,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     'Your changes will be submitted for admin approval.',
                                     style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onPrimaryContainer,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer,
                                     ),
                                   ),
                                 ),
@@ -394,14 +422,17 @@ class _AssetFormPageState extends State<AssetFormPage> {
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
-                              : Text(_isAdmin
-                                  ? (widget.isEditing
-                                      ? 'Update Asset'
-                                      : 'Create Asset')
-                                  : 'Submit Request'),
+                              : Text(
+                                  _isAdmin
+                                      ? (widget.isEditing
+                                            ? 'Update Asset'
+                                            : 'Create Asset')
+                                      : 'Submit Request',
+                                ),
                         ),
                         const SizedBox(height: 80),
                       ],
@@ -446,10 +477,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
         border: const OutlineInputBorder(),
       ),
       items: options
-          .map((opt) => DropdownMenuItem(
-                value: opt,
-                child: Text(opt),
-              ))
+          .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
           .toList(),
       onChanged: onChanged,
       validator: isRequired

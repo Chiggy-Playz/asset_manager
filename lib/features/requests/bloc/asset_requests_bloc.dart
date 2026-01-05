@@ -72,6 +72,7 @@ class AssetRequestsBloc extends Bloc<AssetRequestsEvent, AssetRequestsState> {
         requestType: event.requestType,
         assetId: event.assetId,
         requestData: event.requestData,
+        requestNotes: event.requestNotes,
       );
       emit(AssetRequestActionSuccess(_cachedRequests, 'Request submitted'));
       add(MyRequestsFetchRequested());

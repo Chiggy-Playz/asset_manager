@@ -154,47 +154,68 @@ class _RequestCardState extends State<RequestCard> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      if (request.requestNotes != null &&
+                          request.requestNotes!.isNotEmpty) ...[
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Request Notes: ',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              TextSpan(
+                                text: request.requestNotes!,
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (request.reviewedAt != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Reviewed: ${dateFormat.format(request.reviewedAt!.toLocal())}${request.reviewerName != null ? ' by ${request.reviewerName}' : ''}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.outline,
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Reviewed: ',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              TextSpan(
+                                text:
+                                    "${dateFormat.format(request.reviewedAt!.toLocal())}${request.reviewerName != null ? ' by ${request.reviewerName}' : ''}",
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
                           ),
                         ),
                         if (request.reviewNotes != null &&
                             request.reviewNotes!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color:
-                                    theme.colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.comment_outlined,
-                                    size: 16,
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text:
+                                      request.status ==
+                                          AssetRequestStatus.approved
+                                      ? 'Approval Notes: '
+                                      : 'Rejection Notes: ',
+                                  style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.outline,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      request.reviewNotes!,
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                TextSpan(
+                                  text: request.reviewNotes!,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
                             ),
                           ),
                       ],
                       if (isAdmin && request.isPending) ...[
-                        const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [

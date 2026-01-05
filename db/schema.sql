@@ -3208,6 +3208,7 @@ CREATE TABLE public.asset_requests (
     reviewed_by uuid,
     reviewed_at timestamp with time zone,
     review_notes text,
+    request_notes text,
     CONSTRAINT asset_requests_request_type_check CHECK ((request_type = ANY (ARRAY['create'::text, 'update'::text, 'delete'::text, 'transfer'::text]))),
     CONSTRAINT asset_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))
 );
@@ -5166,4 +5167,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260103164220'),
     ('20260103172009'),
     ('20260104122803'),
-    ('20260104173852');
+    ('20260104173852'),
+    ('20260105054216');

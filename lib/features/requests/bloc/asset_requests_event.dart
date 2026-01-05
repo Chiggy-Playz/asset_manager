@@ -13,12 +13,14 @@ class AllRequestsFetchRequested extends AssetRequestsEvent {}
 class AssetRequestCreateRequested extends AssetRequestsEvent {
   final String requestType;
   final String? assetId;
+  final String? requestNotes;
   final Map<String, dynamic> requestData;
 
   AssetRequestCreateRequested({
     required this.requestType,
     this.assetId,
     required this.requestData,
+    this.requestNotes,
   });
 }
 

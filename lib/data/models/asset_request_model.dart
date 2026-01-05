@@ -10,6 +10,7 @@ class AssetRequestModel {
   final Map<String, dynamic>? currentData;
   final String? requestedBy;
   final DateTime requestedAt;
+  final String? requestNotes;
   final AssetRequestStatus status;
   final String? reviewedBy;
   final DateTime? reviewedAt;
@@ -28,6 +29,7 @@ class AssetRequestModel {
     required this.currentData,
     this.requestedBy,
     required this.requestedAt,
+    this.requestNotes,
     required this.status,
     this.reviewedBy,
     this.reviewedAt,
@@ -51,6 +53,7 @@ class AssetRequestModel {
       currentData: json['current_data'] as Map<String, dynamic>?,
       requestedBy: json['requested_by'] as String?,
       requestedAt: DateTime.parse(json['requested_at'] as String),
+      requestNotes: json['request_notes'] as String?,
       status: _parseStatus(json['status'] as String),
       reviewedBy: json['reviewed_by'] as String?,
       reviewedAt: json['reviewed_at'] != null

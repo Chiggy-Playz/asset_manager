@@ -65,6 +65,7 @@ class AssetRequestsRepository {
   Future<AssetRequestModel> createRequest({
     required String requestType,
     String? assetId,
+    String? requestNotes,
     required Map<String, dynamic> requestData,
   }) async {
     final userId = _supabase.auth.currentUser?.id;
@@ -76,6 +77,7 @@ class AssetRequestsRepository {
           'request_type': requestType,
           'request_data': requestData,
           'requested_by': userId,
+          'request_notes': requestNotes,
         })
         .select('''
           *,
