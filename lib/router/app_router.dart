@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/repositories/asset_requests_repository.dart';
 import '../features/admin/presentation/pages/admin_page.dart';
+import '../features/requests/bloc/asset_requests_bloc.dart';
 import '../features/admin/presentation/pages/field_options_page.dart';
 import '../features/admin/presentation/pages/locations_page.dart';
 import '../features/admin/presentation/pages/requests_management_page.dart';
@@ -174,7 +177,12 @@ GoRouter createAppRouter({
             routes: [
               GoRoute(
                 path: Routes.requests,
-                builder: (context, state) => const RequestsPage(),
+                builder: (context, state) => BlocProvider(
+                  create: (_) => AssetRequestsBloc(
+                    repository: AssetRequestsRepository(),
+                  ),
+                  child: const RequestsPage(),
+                ),
               ),
             ],
           ),
@@ -198,7 +206,12 @@ GoRouter createAppRouter({
                   ),
                   GoRoute(
                     path: 'requests',
-                    builder: (context, state) => const RequestsManagementPage(),
+                    builder: (context, state) => BlocProvider(
+                      create: (_) => AssetRequestsBloc(
+                        repository: AssetRequestsRepository(),
+                      ),
+                      child: const RequestsManagementPage(),
+                    ),
                   ),
                 ],
               ),
