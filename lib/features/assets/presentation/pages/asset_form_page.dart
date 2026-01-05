@@ -45,6 +45,16 @@ class _AssetFormPageState extends State<AssetFormPage> {
   String? _selectedModel;
   String? _selectedLocationId;
 
+  // Initial values for unsaved changes detection
+  String _initialTagId = '';
+  String _initialSerialNumber = '';
+  String? _initialCpu;
+  String? _initialGeneration;
+  String? _initialRam;
+  String? _initialStorage;
+  String? _initialModel;
+  String? _initialLocationId;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +63,55 @@ class _AssetFormPageState extends State<AssetFormPage> {
     if (widget.isEditing) {
       _populateForm();
     }
+    _saveInitialValues();
+  }
+
+  void _saveInitialValues() {
+    _initialTagId = _tagIdController.text;
+    _initialSerialNumber = _serialNumberController.text;
+    _initialCpu = _selectedCpu;
+    _initialGeneration = _selectedGeneration;
+    _initialRam = _selectedRam;
+    _initialStorage = _selectedStorage;
+    _initialModel = _selectedModel;
+    _initialLocationId = _selectedLocationId;
+  }
+
+  bool get _hasUnsavedChanges {
+    return _tagIdController.text != _initialTagId ||
+        _serialNumberController.text != _initialSerialNumber ||
+        _selectedCpu != _initialCpu ||
+        _selectedGeneration != _initialGeneration ||
+        _selectedRam != _initialRam ||
+        _selectedStorage != _initialStorage ||
+        _selectedModel != _initialModel ||
+        _selectedLocationId != _initialLocationId ||
+        _requestNotesController.text.isNotEmpty;
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!_hasUnsavedChanges) return true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard changes?'),
+        content: const Text(
+          'You have unsaved changes. Are you sure you want to leave?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   void _populateForm() {
@@ -200,11 +259,20 @@ class _AssetFormPageState extends State<AssetFormPage> {
           },
         ),
       ],
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.isEditing ? 'Edit Asset' : 'Add Asset'),
-        ),
-        body: ResponsiveBuilder(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          final shouldPop = await _onWillPop();
+          if (shouldPop && context.mounted) {
+            context.pop();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(widget.isEditing ? 'Edit Asset' : 'Add Asset'),
+          ),
+          body: ResponsiveBuilder(
           builder: (context, screenSize) {
             final content = _buildForm(context);
             if (screenSize == ScreenSize.mobile) {
@@ -218,6 +286,7 @@ class _AssetFormPageState extends State<AssetFormPage> {
               ),
             );
           },
+        ),
         ),
       ),
     );
