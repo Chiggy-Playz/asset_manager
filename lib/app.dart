@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
 import 'data/repositories/asset_requests_repository.dart';
@@ -19,10 +20,13 @@ import 'features/profile/bloc/profile_bloc.dart';
 import 'features/profile/bloc/profile_event.dart';
 import 'features/requests/bloc/asset_requests_bloc.dart';
 import 'features/admin/bloc/users_bloc.dart';
+import 'features/settings/cubit/theme_cubit.dart';
 import 'router/app_router.dart';
 
 class App extends StatefulWidget {
-  const App({super.key});
+  final SharedPreferences prefs;
+
+  const App({super.key, required this.prefs});
 
   @override
   State<App> createState() => _AppState();
@@ -43,6 +47,7 @@ class _AppState extends State<App> {
   late final AssetsBloc _assetsBloc;
   late final FieldOptionsBloc _fieldOptionsBloc;
   late final AssetRequestsBloc _assetRequestsBloc;
+  late final ThemeCubit _themeCubit;
   late final GoRouter _router;
 
   @override
@@ -62,6 +67,7 @@ class _AppState extends State<App> {
     _assetsBloc = AssetsBloc(assetsRepository: _assetsRepository);
     _fieldOptionsBloc = FieldOptionsBloc(repository: _fieldOptionsRepository);
     _assetRequestsBloc = AssetRequestsBloc(repository: _assetRequestsRepository);
+    _themeCubit = ThemeCubit(widget.prefs);
     _router = createAppRouter(authBloc: _authBloc, profileBloc: _profileBloc);
 
     // Listen to auth state changes to fetch profile when authenticated
@@ -82,6 +88,7 @@ class _AppState extends State<App> {
     _assetsBloc.close();
     _fieldOptionsBloc.close();
     _assetRequestsBloc.close();
+    _themeCubit.close();
     super.dispose();
   }
 
@@ -96,13 +103,18 @@ class _AppState extends State<App> {
         BlocProvider.value(value: _assetsBloc),
         BlocProvider.value(value: _fieldOptionsBloc),
         BlocProvider.value(value: _assetRequestsBloc),
+        BlocProvider.value(value: _themeCubit),
       ],
-      child: MaterialApp.router(
-        title: 'Asset Manager',
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.system,
-        routerConfig: _router,
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          return MaterialApp.router(
+            title: 'Asset Manager',
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeMode,
+            routerConfig: _router,
+          );
+        },
       ),
     );
   }
