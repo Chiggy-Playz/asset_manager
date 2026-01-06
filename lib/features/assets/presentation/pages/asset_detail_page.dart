@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../data/models/asset_audit_log_model.dart';
@@ -420,7 +421,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    DateFormat dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+    return dateFormat.format(date);
   }
 
   AssetModel? _findAsset(AssetsState state) {
