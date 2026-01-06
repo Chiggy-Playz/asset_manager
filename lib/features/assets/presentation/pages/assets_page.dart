@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../data/models/asset_model.dart';
+import '../../../../data/models/location_model.dart';
 import '../../../../router/routes.dart';
+import '../../../admin/bloc/locations_bloc.dart';
+import '../../../admin/bloc/locations_event.dart';
+import '../../../admin/bloc/locations_state.dart';
 import '../../bloc/assets_bloc.dart';
 import '../../bloc/assets_event.dart';
 import '../../bloc/assets_state.dart';
@@ -23,6 +27,7 @@ class _AssetsPageState extends State<AssetsPage> {
   void initState() {
     super.initState();
     context.read<AssetsBloc>().add(AssetsFetchRequested());
+    context.read<LocationsBloc>().add(LocationsFetchRequested());
   }
 
   @override
@@ -102,25 +107,35 @@ class _AssetsPageState extends State<AssetsPage> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        context.read<AssetsBloc>().add(AssetsFetchRequested());
+    return BlocBuilder<LocationsBloc, LocationsState>(
+      builder: (context, locState) {
+        final locations = _getLocations(locState);
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<AssetsBloc>().add(AssetsFetchRequested());
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.only(top: 8, bottom: 80),
+            itemCount: assets.length,
+            itemBuilder: (context, index) {
+              final asset = assets[index];
+              return AssetCard(
+                asset: asset,
+                isLoading: actionAssetId == asset.id,
+                locationFullPath: _getLocationFullPath(
+                  asset.currentLocationId,
+                  locations,
+                ),
+                onTap: () => context.go(Routes.assetDetailPath(asset.id)),
+                onTransfer: () => _showTransferDialog(context, asset),
+                onEdit: () => context.go(Routes.assetEditPath(asset.id)),
+                onDelete: () => _showDeleteConfirmation(context, asset),
+              );
+            },
+          ),
+        );
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.only(top: 8, bottom: 80),
-        itemCount: assets.length,
-        itemBuilder: (context, index) {
-          final asset = assets[index];
-          return AssetCard(
-            asset: asset,
-            isLoading: actionAssetId == asset.id,
-            onTap: () => context.go(Routes.assetDetailPath(asset.id)),
-            onTransfer: () => _showTransferDialog(context, asset),
-            onEdit: () => context.go(Routes.assetEditPath(asset.id)),
-            onDelete: () => _showDeleteConfirmation(context, asset),
-          );
-        },
-      ),
     );
   }
 
@@ -138,77 +153,87 @@ class _AssetsPageState extends State<AssetsPage> {
       return const Center(child: Text('No assets found'));
     }
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Card(
-            child: DataTable(
-              showCheckboxColumn: false,
-              columns: const [
-                DataColumn(label: Text('Tag')),
-                DataColumn(label: Text('Serial Number')),
-                DataColumn(label: Text('Model')),
-                DataColumn(label: Text('CPU')),
-                DataColumn(label: Text('RAM')),
-                DataColumn(label: Text('Storage')),
-                DataColumn(label: Text('Location')),
-                DataColumn(label: Text('Actions')),
-              ],
-              rows: assets.map((asset) {
-                final isLoading = actionAssetId == asset.id;
-                return DataRow(
-                  onSelectChanged: (_) =>
-                      context.go(Routes.assetDetailPath(asset.id)),
-                  cells: [
-                    DataCell(Text(asset.tagId)),
-                    DataCell(Text(asset.serialNumber ?? '-')),
-                    DataCell(Text(asset.modelNumber ?? '-')),
-                    DataCell(Text(asset.cpu ?? '-')),
-                    DataCell(Text(asset.ram ?? '-')),
-                    DataCell(Text(asset.storage ?? '-')),
-                    DataCell(Text(asset.locationName ?? '-')),
-                    DataCell(
-                      isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.swap_horiz),
-                                  tooltip: 'Transfer',
-                                  onPressed: () =>
-                                      _showTransferDialog(context, asset),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  tooltip: 'Edit',
-                                  onPressed: () => context.go(
-                                    Routes.assetEditPath(asset.id),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  tooltip: 'Delete',
-                                  onPressed: () =>
-                                      _showDeleteConfirmation(context, asset),
-                                ),
-                              ],
-                            ),
-                    ),
+    return BlocBuilder<LocationsBloc, LocationsState>(
+      builder: (context, locState) {
+        final locations = _getLocations(locState);
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Card(
+                child: DataTable(
+                  showCheckboxColumn: false,
+                  columns: const [
+                    DataColumn(label: Text('Tag')),
+                    DataColumn(label: Text('Serial Number')),
+                    DataColumn(label: Text('Model')),
+                    DataColumn(label: Text('CPU')),
+                    DataColumn(label: Text('RAM')),
+                    DataColumn(label: Text('Storage')),
+                    DataColumn(label: Text('Location')),
+                    DataColumn(label: Text('Actions')),
                   ],
-                );
-              }).toList(),
+                  rows: assets.map((asset) {
+                    final isLoading = actionAssetId == asset.id;
+                    return DataRow(
+                      onSelectChanged: (_) =>
+                          context.go(Routes.assetDetailPath(asset.id)),
+                      cells: [
+                        DataCell(Text(asset.tagId)),
+                        DataCell(Text(asset.serialNumber ?? '-')),
+                        DataCell(Text(asset.modelNumber ?? '-')),
+                        DataCell(Text(asset.cpu ?? '-')),
+                        DataCell(Text(asset.ram ?? '-')),
+                        DataCell(Text(asset.storage ?? '-')),
+                        DataCell(Text(_getLocationFullPath(
+                          asset.currentLocationId,
+                          locations,
+                        ))),
+                        DataCell(
+                          isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.swap_horiz),
+                                      tooltip: 'Transfer',
+                                      onPressed: () =>
+                                          _showTransferDialog(context, asset),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit),
+                                      tooltip: 'Edit',
+                                      onPressed: () => context.go(
+                                        Routes.assetEditPath(asset.id),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete),
+                                      tooltip: 'Delete',
+                                      onPressed: () => _showDeleteConfirmation(
+                                          context, asset),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -219,6 +244,26 @@ class _AssetsPageState extends State<AssetsPage> {
       AssetActionSuccess s => s.assets,
       _ => [],
     };
+  }
+
+  List<LocationModel> _getLocations(LocationsState state) {
+    return switch (state) {
+      LocationsLoaded s => s.locations,
+      LocationActionInProgress s => s.locations,
+      LocationActionSuccess s => s.locations,
+      _ => [],
+    };
+  }
+
+  String _getLocationFullPath(String? locationId, List<LocationModel> locations) {
+    if (locationId == null) return '-';
+    if (locations.isEmpty) return '-';
+    try {
+      final location = locations.firstWhere((l) => l.id == locationId);
+      return location.getFullPath(locations);
+    } catch (_) {
+      return '-';
+    }
   }
 
   void _showTransferDialog(BuildContext context, AssetModel asset) {

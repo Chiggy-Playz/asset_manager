@@ -841,6 +841,62 @@ $$;
 
 
 --
+-- Name: check_location_circular_ref(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_location_circular_ref() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  current_id uuid := NEW.parent_id;
+BEGIN
+  IF NEW.parent_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Traverse up to check if we encounter the same id
+  WHILE current_id IS NOT NULL LOOP
+    IF current_id = NEW.id THEN
+      RAISE EXCEPTION 'Circular reference detected in location hierarchy';
+    END IF;
+    SELECT parent_id INTO current_id
+    FROM public.locations
+    WHERE id = current_id;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: check_location_depth(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_location_depth() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  depth INTEGER := 0;
+  current_parent_id uuid := NEW.parent_id;
+BEGIN
+  -- Count depth by traversing up the tree
+  WHILE current_parent_id IS NOT NULL LOOP
+    depth := depth + 1;
+    IF depth > 2 THEN
+      RAISE EXCEPTION 'Maximum nesting depth of 3 levels exceeded';
+    END IF;
+    SELECT parent_id INTO current_parent_id
+    FROM public.locations
+    WHERE id = current_parent_id;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3255,7 +3311,8 @@ CREATE TABLE public.locations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     name text NOT NULL,
     description text,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    parent_id uuid
 );
 
 
@@ -4313,6 +4370,13 @@ CREATE INDEX assets_current_location_id_idx ON public.assets USING btree (curren
 
 
 --
+-- Name: idx_locations_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_locations_parent_id ON public.locations USING btree (parent_id);
+
+
+--
 -- Name: profiles_is_active_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4446,10 +4510,24 @@ CREATE TRIGGER assets_updated_at BEFORE UPDATE ON public.assets FOR EACH ROW EXE
 
 
 --
+-- Name: locations enforce_location_depth; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER enforce_location_depth BEFORE INSERT OR UPDATE ON public.locations FOR EACH ROW EXECUTE FUNCTION public.check_location_depth();
+
+
+--
 -- Name: field_options field_options_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER field_options_updated_at BEFORE UPDATE ON public.field_options FOR EACH ROW EXECUTE FUNCTION public.update_field_options_updated_at();
+
+
+--
+-- Name: locations prevent_location_circular_ref; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER prevent_location_circular_ref BEFORE INSERT OR UPDATE ON public.locations FOR EACH ROW EXECUTE FUNCTION public.check_location_circular_ref();
 
 
 --
@@ -4682,6 +4760,14 @@ ALTER TABLE ONLY public.asset_requests
 
 ALTER TABLE ONLY public.assets
     ADD CONSTRAINT assets_current_location_id_fkey FOREIGN KEY (current_location_id) REFERENCES public.locations(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: locations locations_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.locations
+    ADD CONSTRAINT locations_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.locations(id) ON DELETE CASCADE;
 
 
 --
@@ -5168,4 +5254,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260103172009'),
     ('20260104122803'),
     ('20260104173852'),
-    ('20260105054216');
+    ('20260105054216'),
+    ('20260106125050');

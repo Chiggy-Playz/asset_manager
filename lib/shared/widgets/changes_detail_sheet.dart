@@ -114,17 +114,32 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
   List<LocationModel> locations = [];
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize locations from current bloc state
+    final locState = context.read<LocationsBloc>().state;
+    locations = switch (locState) {
+      LocationsLoaded l => l.locations,
+      LocationActionInProgress l => l.locations,
+      LocationActionSuccess l => l.locations,
+      _ => <LocationModel>[],
+    };
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return BlocListener<LocationsBloc, LocationsState>(
       listener: (context, locationState) {
-        locations = switch (locationState) {
-          LocationsLoaded l => l.locations,
-          LocationActionInProgress l => l.locations,
-          LocationActionSuccess l => l.locations,
-          _ => <LocationModel>[],
-        };
+        setState(() {
+          locations = switch (locationState) {
+            LocationsLoaded l => l.locations,
+            LocationActionInProgress l => l.locations,
+            LocationActionSuccess l => l.locations,
+            _ => <LocationModel>[],
+          };
+        });
       },
       child: DraggableScrollableSheet(
         initialChildSize: 0.6,
@@ -205,7 +220,7 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('From', style: theme.textTheme.labelSmall),
-                  Text(fromName, style: theme.textTheme.bodyLarge),
+                  Text(fromName, style: theme.textTheme.bodyMedium),
                 ],
               ),
             ),
@@ -215,7 +230,7 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('To', style: theme.textTheme.labelSmall),
-                  Text(toName, style: theme.textTheme.bodyLarge),
+                  Text(toName, style: theme.textTheme.bodyMedium),
                 ],
               ),
             ),
@@ -473,8 +488,10 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
 
   String _getLocationName(String? locationId) {
     if (locationId == null) return 'No Location';
+    if (locations.isEmpty) return 'Loading...';
     try {
-      return locations.firstWhere((l) => l.id == locationId).name;
+      final location = locations.firstWhere((l) => l.id == locationId);
+      return location.getFullPath(locations);
     } catch (_) {
       return 'Unknown';
     }

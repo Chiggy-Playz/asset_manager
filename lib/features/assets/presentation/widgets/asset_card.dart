@@ -9,6 +9,7 @@ class AssetCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final bool isLoading;
+  final String? locationFullPath;
 
   const AssetCard({
     super.key,
@@ -18,6 +19,7 @@ class AssetCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.isLoading = false,
+    this.locationFullPath,
   });
 
   @override
@@ -144,10 +146,13 @@ class AssetCard extends StatelessWidget {
                     color: theme.colorScheme.outline,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    asset.locationName ?? 'No Location',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.outline,
+                  Expanded(
+                    child: Text(
+                      locationFullPath ?? asset.locationName ?? 'No Location',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

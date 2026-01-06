@@ -1,7 +1,8 @@
-import 'package:asset_manager/data/models/location_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/widgets/location_selector.dart';
+import '../../../../data/models/location_model.dart';
 import '../../../admin/bloc/locations_bloc.dart';
 import '../../../admin/bloc/locations_event.dart';
 import '../../../admin/bloc/locations_state.dart';
@@ -46,34 +47,33 @@ class _TransferDialogState extends State<TransferDialog> {
             return Text('Error: ${state.message}');
           }
 
-          final locations = state is LocationsLoaded
-              ? state.locations
-              : <LocationModel>[];
+          final locations = switch (state) {
+            LocationsLoaded s => s.locations,
+            LocationActionInProgress s => s.locations,
+            LocationActionSuccess s => s.locations,
+            _ => <LocationModel>[],
+          };
 
           if (locations.isEmpty) {
             return const Text('No locations available');
           }
 
-          return DropdownButtonFormField<String>(
-            initialValue: _selectedLocationId,
-            decoration: const InputDecoration(
-              labelText: 'Select Location',
-              border: OutlineInputBorder(),
+          return SizedBox(
+            width: double.maxFinite,
+            child: LocationSelector(
+              locations: locations,
+              selectedLocationId: _selectedLocationId,
+              onChanged: (value) {
+                setState(() {
+                  _selectedLocationId = value;
+                });
+              },
+              label: 'Select Location',
+              isRequired: true,
+              excludeIds: widget.currentLocationId != null
+                  ? {widget.currentLocationId!}
+                  : {},
             ),
-            items: locations
-                .where((loc) => loc.id != widget.currentLocationId)
-                .map(
-                  (location) => DropdownMenuItem(
-                    value: location.id,
-                    child: Text(location.name),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedLocationId = value;
-              });
-            },
           );
         },
       ),

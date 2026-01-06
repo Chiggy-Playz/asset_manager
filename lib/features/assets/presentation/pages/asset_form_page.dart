@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/widgets/location_selector.dart';
 import '../../../../data/models/asset_model.dart';
 import '../../../../data/models/location_model.dart';
 import '../../../admin/bloc/field_options_bloc.dart';
@@ -404,34 +405,41 @@ class _AssetFormPageState extends State<AssetFormPage> {
                         // Location dropdown
                         BlocBuilder<LocationsBloc, LocationsState>(
                           builder: (context, locState) {
-                            final locations = locState is LocationsLoaded
-                                ? locState.locations
-                                : <LocationModel>[];
+                            final locations = switch (locState) {
+                              LocationsLoaded s => s.locations,
+                              LocationActionInProgress s => s.locations,
+                              LocationActionSuccess s => s.locations,
+                              _ => <LocationModel>[],
+                            };
 
-                            return DropdownButtonFormField<String>(
-                              value: _selectedLocationId,
-                              decoration: InputDecoration(
-                                labelText: 'Location',
-                                border: const OutlineInputBorder(),
-                                helperText: widget.isEditing
-                                    ? 'Use Transfer button to change location'
-                                    : null,
-                              ),
-                              items: locations
-                                  .map(
-                                    (loc) => DropdownMenuItem(
-                                      value: loc.id,
-                                      child: Text(loc.name),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: widget.isEditing
-                                  ? null
-                                  : (value) {
-                                      setState(() {
-                                        _selectedLocationId = value;
-                                      });
-                                    },
+                            if (widget.isEditing) {
+                              // Show read-only field for editing
+                              final selectedLocation = locations
+                                  .where((l) => l.id == _selectedLocationId)
+                                  .firstOrNull;
+                              return TextFormField(
+                                enabled: false,
+                                initialValue: selectedLocation != null
+                                    ? selectedLocation.getFullPath(locations)
+                                    : 'Not set',
+                                decoration: const InputDecoration(
+                                  labelText: 'Location',
+                                  border: OutlineInputBorder(),
+                                  helperText:
+                                      'Use Transfer button to change location',
+                                ),
+                              );
+                            }
+
+                            return LocationSelector(
+                              locations: locations,
+                              selectedLocationId: _selectedLocationId,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedLocationId = value;
+                                });
+                              },
+                              label: 'Location',
                             );
                           },
                         ),

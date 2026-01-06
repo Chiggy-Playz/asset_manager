@@ -168,7 +168,21 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                     _buildInfoRow('Generation', asset.generation ?? '-'),
                     _buildInfoRow('RAM', asset.ram ?? '-'),
                     _buildInfoRow('Storage', asset.storage ?? '-'),
-                    _buildInfoRow('Location', asset.locationName ?? '-'),
+                    BlocBuilder<LocationsBloc, LocationsState>(
+                      builder: (context, locState) {
+                        final locations = switch (locState) {
+                          LocationsLoaded s => s.locations,
+                          LocationActionInProgress s => s.locations,
+                          LocationActionSuccess s => s.locations,
+                          _ => <LocationModel>[],
+                        };
+                        final locationName = _getLocationFullPath(
+                          asset.currentLocationId,
+                          locations,
+                        );
+                        return _buildInfoRow('Location', locationName);
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -198,9 +212,12 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                     else
                       BlocBuilder<LocationsBloc, LocationsState>(
                         builder: (context, locState) {
-                          final locations = locState is LocationsLoaded
-                              ? locState.locations
-                              : <LocationModel>[];
+                          final locations = switch (locState) {
+                            LocationsLoaded s => s.locations,
+                            LocationActionInProgress s => s.locations,
+                            LocationActionSuccess s => s.locations,
+                            _ => <LocationModel>[],
+                          };
                           return Column(
                             children: _auditLogs!
                                 .map(
@@ -363,6 +380,17 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     );
   }
 
+  String _getLocationFullPath(String? locationId, List<LocationModel> locations) {
+    if (locationId == null) return '-';
+    if (locations.isEmpty) return '-';
+    try {
+      final location = locations.firstWhere((l) => l.id == locationId);
+      return location.getFullPath(locations);
+    } catch (_) {
+      return '-';
+    }
+  }
+
   String? _getTransferDescription(
     AssetAuditLogModel log,
     List<LocationModel> locations,
@@ -372,28 +400,12 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final fromId = log.oldValues!['current_location_id'] as String?;
     final toId = log.newValues!['current_location_id'] as String?;
 
-    String fromName = 'Unknown';
-    String toName = 'Unknown';
-
-    if (fromId != null) {
-      try {
-        fromName = locations.firstWhere((l) => l.id == fromId).name;
-      } catch (_) {
-        fromName = 'Unknown';
-      }
-    } else {
-      fromName = 'No Location';
-    }
-
-    if (toId != null) {
-      try {
-        toName = locations.firstWhere((l) => l.id == toId).name;
-      } catch (_) {
-        toName = 'Unknown';
-      }
-    } else {
-      toName = 'No Location';
-    }
+    final fromName = fromId != null
+        ? _getLocationFullPath(fromId, locations)
+        : 'No Location';
+    final toName = toId != null
+        ? _getLocationFullPath(toId, locations)
+        : 'No Location';
 
     return '$fromName → $toName';
   }

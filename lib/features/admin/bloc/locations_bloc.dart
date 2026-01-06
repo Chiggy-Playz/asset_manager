@@ -8,6 +8,7 @@ import 'locations_state.dart';
 class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
   final LocationsRepository _locationsRepository;
   List<LocationModel> _cachedLocations = [];
+  List<LocationModel> _cachedTree = [];
 
   LocationsBloc({required LocationsRepository locationsRepository})
       : _locationsRepository = locationsRepository,
@@ -24,9 +25,11 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
   ) async {
     emit(LocationsLoading());
     try {
-      final locations = await _locationsRepository.fetchLocations();
-      _cachedLocations = locations;
-      emit(LocationsLoaded(locations));
+      final tree = await _locationsRepository.fetchLocationTree();
+      final flatList = _locationsRepository.flattenTree(tree);
+      _cachedTree = tree;
+      _cachedLocations = flatList;
+      emit(LocationsLoaded(_cachedLocations, locationTree: _cachedTree));
     } catch (e) {
       emit(LocationsError(e.toString()));
     }
@@ -36,17 +39,25 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
     LocationCreateRequested event,
     Emitter<LocationsState> emit,
   ) async {
-    emit(LocationActionInProgress(_cachedLocations));
+    emit(LocationActionInProgress(
+      _cachedLocations,
+      locationTree: _cachedTree,
+    ));
     try {
       await _locationsRepository.createLocation(
         name: event.name,
         description: event.description,
+        parentId: event.parentId,
       );
-      emit(LocationActionSuccess(_cachedLocations, 'Location created'));
+      emit(LocationActionSuccess(
+        _cachedLocations,
+        'Location created',
+        locationTree: _cachedTree,
+      ));
       add(LocationsFetchRequested());
     } catch (e) {
       emit(LocationsError(e.toString()));
-      emit(LocationsLoaded(_cachedLocations));
+      emit(LocationsLoaded(_cachedLocations, locationTree: _cachedTree));
     }
   }
 
@@ -54,18 +65,27 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
     LocationUpdateRequested event,
     Emitter<LocationsState> emit,
   ) async {
-    emit(LocationActionInProgress(_cachedLocations, actionLocationId: event.id));
+    emit(LocationActionInProgress(
+      _cachedLocations,
+      locationTree: _cachedTree,
+      actionLocationId: event.id,
+    ));
     try {
       await _locationsRepository.updateLocation(
         id: event.id,
         name: event.name,
         description: event.description,
+        parentId: event.parentId,
       );
-      emit(LocationActionSuccess(_cachedLocations, 'Location updated'));
+      emit(LocationActionSuccess(
+        _cachedLocations,
+        'Location updated',
+        locationTree: _cachedTree,
+      ));
       add(LocationsFetchRequested());
     } catch (e) {
       emit(LocationsError(e.toString()));
-      emit(LocationsLoaded(_cachedLocations));
+      emit(LocationsLoaded(_cachedLocations, locationTree: _cachedTree));
     }
   }
 
@@ -73,14 +93,22 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
     LocationDeleteRequested event,
     Emitter<LocationsState> emit,
   ) async {
-    emit(LocationActionInProgress(_cachedLocations, actionLocationId: event.id));
+    emit(LocationActionInProgress(
+      _cachedLocations,
+      locationTree: _cachedTree,
+      actionLocationId: event.id,
+    ));
     try {
       await _locationsRepository.deleteLocation(event.id);
-      emit(LocationActionSuccess(_cachedLocations, 'Location deleted'));
+      emit(LocationActionSuccess(
+        _cachedLocations,
+        'Location deleted',
+        locationTree: _cachedTree,
+      ));
       add(LocationsFetchRequested());
     } catch (e) {
       emit(LocationsError(e.toString()));
-      emit(LocationsLoaded(_cachedLocations));
+      emit(LocationsLoaded(_cachedLocations, locationTree: _cachedTree));
     }
   }
 }
