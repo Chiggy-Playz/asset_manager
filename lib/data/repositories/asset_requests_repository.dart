@@ -37,7 +37,7 @@ class AssetRequestsRepository {
           assets(tag_id)
         ''')
         .eq('status', 'pending')
-        .order('requested_at', ascending: true);
+        .order('requested_at', ascending: false);
 
     return (response as List)
         .map((json) => AssetRequestModel.fromJson(json))
