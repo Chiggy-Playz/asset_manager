@@ -132,7 +132,6 @@ class _OtpInputFieldState extends State<OtpInputField> {
                 focusNode: _focusNodes[index],
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
-                maxLength: 1,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -150,9 +149,7 @@ class _OtpInputFieldState extends State<OtpInputField> {
                     ),
                   ),
                 ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 onChanged: (value) => _onDigitChanged(index, value),
               ),
             ),
