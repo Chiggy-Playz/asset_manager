@@ -1,11 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/location_selector.dart';
+import '../../../../core/widgets/ram_module_editor.dart';
+import '../../../../core/widgets/storage_device_editor.dart';
 import '../../../../data/models/asset_model.dart';
 import '../../../../data/models/location_model.dart';
+import '../../../../data/models/ram_module_model.dart';
+import '../../../../data/models/storage_device_model.dart';
 import '../../../admin/bloc/field_options_bloc.dart';
 import '../../../admin/bloc/field_options_event.dart';
 import '../../../admin/bloc/field_options_state.dart';
@@ -41,8 +46,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
   // Dropdown selections
   String? _selectedCpu;
   String? _selectedGeneration;
-  String? _selectedRam;
-  String? _selectedStorage;
+  List<RamModuleModel> _ramModules = [];
+  List<StorageDeviceModel> _storageDevices = [];
   String? _selectedModel;
   String? _selectedLocationId;
 
@@ -51,8 +56,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
   String _initialSerialNumber = '';
   String? _initialCpu;
   String? _initialGeneration;
-  String? _initialRam;
-  String? _initialStorage;
+  List<RamModuleModel> _initialRamModules = [];
+  List<StorageDeviceModel> _initialStorageDevices = [];
   String? _initialModel;
   String? _initialLocationId;
 
@@ -72,8 +77,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
     _initialSerialNumber = _serialNumberController.text;
     _initialCpu = _selectedCpu;
     _initialGeneration = _selectedGeneration;
-    _initialRam = _selectedRam;
-    _initialStorage = _selectedStorage;
+    _initialRamModules = List.from(_ramModules);
+    _initialStorageDevices = List.from(_storageDevices);
     _initialModel = _selectedModel;
     _initialLocationId = _selectedLocationId;
   }
@@ -83,8 +88,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
         _serialNumberController.text != _initialSerialNumber ||
         _selectedCpu != _initialCpu ||
         _selectedGeneration != _initialGeneration ||
-        _selectedRam != _initialRam ||
-        _selectedStorage != _initialStorage ||
+        !listEquals(_ramModules, _initialRamModules) ||
+        !listEquals(_storageDevices, _initialStorageDevices) ||
         _selectedModel != _initialModel ||
         _selectedLocationId != _initialLocationId ||
         _requestNotesController.text.isNotEmpty;
@@ -123,8 +128,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
       _serialNumberController.text = asset.serialNumber ?? '';
       _selectedCpu = asset.cpu;
       _selectedGeneration = asset.generation;
-      _selectedRam = asset.ram;
-      _selectedStorage = asset.storage;
+      _ramModules = List.from(asset.ramModules);
+      _storageDevices = List.from(asset.storageDevices);
       _selectedModel = asset.modelNumber;
       _selectedLocationId = asset.currentLocationId;
     }
@@ -164,8 +169,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
       'tag_id': _tagIdController.text,
       'cpu': _selectedCpu,
       'generation': _selectedGeneration,
-      'ram': _selectedRam,
-      'storage': _selectedStorage,
+      'ram': _ramModules.map((m) => m.toJson()).toList(),
+      'storage': _storageDevices.map((d) => d.toJson()).toList(),
       'serial_number': _serialNumberController.text.isEmpty
           ? null
           : _serialNumberController.text,
@@ -181,8 +186,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
             id: widget.assetId!,
             cpu: _selectedCpu,
             generation: _selectedGeneration,
-            ram: _selectedRam,
-            storage: _selectedStorage,
+            ramModules: _ramModules,
+            storageDevices: _storageDevices,
             serialNumber: _serialNumberController.text.isEmpty
                 ? null
                 : _serialNumberController.text,
@@ -196,8 +201,8 @@ class _AssetFormPageState extends State<AssetFormPage> {
             tagId: _tagIdController.text,
             cpu: _selectedCpu,
             generation: _selectedGeneration,
-            ram: _selectedRam,
-            storage: _selectedStorage,
+            ramModules: _ramModules,
+            storageDevices: _storageDevices,
             serialNumber: _serialNumberController.text.isEmpty
                 ? null
                 : _serialNumberController.text,
@@ -379,26 +384,30 @@ class _AssetFormPageState extends State<AssetFormPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        // RAM dropdown
-                        _buildDropdownField(
-                          label: 'RAM',
-                          value: _selectedRam,
-                          options: fieldOptions?.getOptionsFor('ram') ?? [],
-                          onChanged: (v) => setState(() => _selectedRam = v),
-                          isRequired:
-                              fieldOptions?.isFieldRequired('ram') ?? false,
+                        // RAM Modules Editor
+                        RamModuleEditor(
+                          modules: _ramModules,
+                          onChanged: (modules) =>
+                              setState(() => _ramModules = modules),
+                          sizeOptions:
+                              fieldOptions?.getOptionsFor('ram_size') ?? [],
+                          formFactorOptions:
+                              fieldOptions?.getOptionsFor('ram_form_factor') ??
+                                  [],
+                          ddrTypeOptions:
+                              fieldOptions?.getOptionsFor('ram_ddr_type') ?? [],
                         ),
                         const SizedBox(height: 16),
 
-                        // Storage dropdown
-                        _buildDropdownField(
-                          label: 'Storage',
-                          value: _selectedStorage,
-                          options: fieldOptions?.getOptionsFor('storage') ?? [],
-                          onChanged: (v) =>
-                              setState(() => _selectedStorage = v),
-                          isRequired:
-                              fieldOptions?.isFieldRequired('storage') ?? false,
+                        // Storage Devices Editor
+                        StorageDeviceEditor(
+                          devices: _storageDevices,
+                          onChanged: (devices) =>
+                              setState(() => _storageDevices = devices),
+                          sizeOptions:
+                              fieldOptions?.getOptionsFor('storage_size') ?? [],
+                          typeOptions:
+                              fieldOptions?.getOptionsFor('storage_type') ?? [],
                         ),
                         const SizedBox(height: 16),
 

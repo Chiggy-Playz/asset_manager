@@ -131,10 +131,10 @@ class AssetCard extends StatelessWidget {
                 children: [
                   if (asset.cpu != null)
                     _buildChip(context, Icons.memory, asset.cpu!),
-                  if (asset.ram != null)
-                    _buildChip(context, Icons.storage, asset.ram!),
-                  if (asset.storage != null)
-                    _buildChip(context, Icons.sd_storage, asset.storage!),
+                  if (asset.ramModules.isNotEmpty)
+                    _buildChip(context, Icons.storage, asset.ramSummary),
+                  if (asset.storageDevices.isNotEmpty)
+                    _buildChip(context, Icons.sd_storage, asset.storageSummary),
                 ],
               ),
               const SizedBox(height: 8),

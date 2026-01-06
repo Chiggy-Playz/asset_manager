@@ -725,7 +725,7 @@ BEGIN
   -- Get current user as reviewer
   v_reviewer_id := auth.uid();
 
-  -- Fetch the requestw
+  -- Fetch the request
   SELECT * INTO v_request
   FROM asset_requests
   WHERE id = p_request_id;
@@ -772,8 +772,8 @@ BEGIN
         v_tag_id,
         v_request.request_data->>'cpu',
         v_request.request_data->>'generation',
-        v_request.request_data->>'ram',
-        v_request.request_data->>'storage',
+        COALESCE(v_request.request_data->'ram', '[]'::jsonb),
+        COALESCE(v_request.request_data->'storage', '[]'::jsonb),
         v_request.request_data->>'serial_number',
         v_request.request_data->>'model_number',
         (v_request.request_data->>'current_location_id')::uuid
@@ -784,8 +784,8 @@ BEGIN
       UPDATE assets SET
         cpu = COALESCE(v_request.request_data->>'cpu', cpu),
         generation = COALESCE(v_request.request_data->>'generation', generation),
-        ram = COALESCE(v_request.request_data->>'ram', ram),
-        storage = COALESCE(v_request.request_data->>'storage', storage),
+        ram = COALESCE(v_request.request_data->'ram', ram),
+        storage = COALESCE(v_request.request_data->'storage', storage),
         serial_number = COALESCE(v_request.request_data->>'serial_number', serial_number),
         model_number = COALESCE(v_request.request_data->>'model_number', model_number)
       WHERE id = v_request.asset_id;
@@ -824,18 +824,18 @@ CREATE FUNCTION public.asset_request_populate_current_data() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-SELECT jsonb_build_object(
-      'cpu', cpu,
-      'generation', generation,
-      'ram', ram,
-      'storage', storage,
-      'serial_number', serial_number,
-      'model_number', model_number
-    )
-INTO NEW.current_data
-FROM assets
-WHERE id = NEW.asset_id;
-RETURN NEW;
+  SELECT jsonb_build_object(
+    'cpu', cpu,
+    'generation', generation,
+    'ram', ram,          -- Now JSONB array
+    'storage', storage,  -- Now JSONB array
+    'serial_number', serial_number,
+    'model_number', model_number
+  )
+  INTO NEW.current_data
+  FROM assets
+  WHERE id = NEW.asset_id;
+  RETURN NEW;
 END;
 $$;
 
@@ -3294,8 +3294,8 @@ CREATE TABLE public.assets (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     cpu text,
     generation text,
-    ram text,
-    storage text,
+    ram jsonb DEFAULT '[]'::jsonb,
+    storage jsonb DEFAULT '[]'::jsonb,
     serial_number text,
     model_number text,
     current_location_id uuid,
@@ -3865,14 +3865,6 @@ ALTER TABLE ONLY public.field_options
 
 
 --
--- Name: locations locations_name_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.locations
-    ADD CONSTRAINT locations_name_key UNIQUE (name);
-
-
---
 -- Name: locations locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4390,6 +4382,20 @@ CREATE INDEX assets_current_location_id_idx ON public.assets USING btree (curren
 --
 
 CREATE INDEX idx_locations_parent_id ON public.locations USING btree (parent_id);
+
+
+--
+-- Name: locations_name_parent_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX locations_name_parent_unique ON public.locations USING btree (name, parent_id) WHERE (parent_id IS NOT NULL);
+
+
+--
+-- Name: locations_name_root_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX locations_name_root_unique ON public.locations USING btree (name) WHERE (parent_id IS NULL);
 
 
 --
@@ -5279,4 +5285,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260104173852'),
     ('20260105054216'),
     ('20260106125050'),
-    ('20260106154825');
+    ('20260106154825'),
+    ('20260106162936'),
+    ('20260107130000');

@@ -1,3 +1,6 @@
+import '../../../data/models/ram_module_model.dart';
+import '../../../data/models/storage_device_model.dart';
+
 sealed class AssetsEvent {}
 
 class AssetsFetchRequested extends AssetsEvent {}
@@ -6,8 +9,8 @@ class AssetCreateRequested extends AssetsEvent {
   final String tagId;
   final String? cpu;
   final String? generation;
-  final String? ram;
-  final String? storage;
+  final List<RamModuleModel> ramModules;
+  final List<StorageDeviceModel> storageDevices;
   final String? serialNumber;
   final String? modelNumber;
   final String? currentLocationId;
@@ -16,8 +19,8 @@ class AssetCreateRequested extends AssetsEvent {
     required this.tagId,
     this.cpu,
     this.generation,
-    this.ram,
-    this.storage,
+    this.ramModules = const [],
+    this.storageDevices = const [],
     this.serialNumber,
     this.modelNumber,
     this.currentLocationId,
@@ -28,8 +31,8 @@ class AssetUpdateRequested extends AssetsEvent {
   final String id;
   final String? cpu;
   final String? generation;
-  final String? ram;
-  final String? storage;
+  final List<RamModuleModel> ramModules;
+  final List<StorageDeviceModel> storageDevices;
   final String? serialNumber;
   final String? modelNumber;
   final String? currentLocationId;
@@ -38,8 +41,8 @@ class AssetUpdateRequested extends AssetsEvent {
     required this.id,
     this.cpu,
     this.generation,
-    this.ram,
-    this.storage,
+    this.ramModules = const [],
+    this.storageDevices = const [],
     this.serialNumber,
     this.modelNumber,
     this.currentLocationId,

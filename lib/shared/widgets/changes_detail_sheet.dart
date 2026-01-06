@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:asset_manager/features/admin/bloc/locations_bloc.dart';
 import 'package:asset_manager/features/admin/bloc/locations_state.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,8 @@ import 'package:intl/intl.dart';
 import '../../data/models/asset_audit_log_model.dart';
 import '../../data/models/asset_request_model.dart';
 import '../../data/models/location_model.dart';
+import '../../data/models/ram_module_model.dart';
+import '../../data/models/storage_device_model.dart';
 
 /// A shared widget to display change details for both:
 /// - Asset audit logs (history)
@@ -209,33 +213,18 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
     String toName = _getLocationName(toId);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text('Transfer Details', style: theme.textTheme.titleMedium),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('From', style: theme.textTheme.labelSmall),
-                  Text(fromName, style: theme.textTheme.bodyMedium),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('To', style: theme.textTheme.labelSmall),
-                  Text(toName, style: theme.textTheme.bodyMedium),
-                ],
-              ),
-            ),
-          ],
-        ),
+
+        Center(child: Text('From', style: theme.textTheme.labelSmall)),
+        Center(child: Text(fromName, style: theme.textTheme.titleLarge)),
+        const SizedBox(height: 16),
+        const Icon(Icons.arrow_downward, size: 48),
+        const SizedBox(height: 16),
+        Center(child: Text('To', style: theme.textTheme.labelSmall)),
+        Center(child: Text(toName, style: theme.textTheme.titleLarge)),
       ],
     );
   }
@@ -245,18 +234,12 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
     final oldVals = widget.oldValues ?? {};
     final newVals = widget.newValues ?? {};
 
-    final fieldsToCheck = [
-      'cpu',
-      'generation',
-      'ram',
-      'storage',
-      'serial_number',
-      'model_number',
-    ];
+    // Simple text fields
+    final simpleFields = ['cpu', 'generation', 'serial_number', 'model_number'];
 
     // If we have old values, show diff (for history)
     if (widget.oldValues != null) {
-      for (final field in fieldsToCheck) {
+      for (final field in simpleFields) {
         final oldVal = oldVals[field]?.toString() ?? '';
         final newVal = newVals[field]?.toString() ?? '';
         if (oldVal != newVal) {
@@ -270,13 +253,47 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
           );
         }
       }
+
+      // Handle RAM modules (JSONB array)
+      if (_hasListChanged(oldVals['ram'], newVals['ram'])) {
+        changes.add(
+          _buildRamChangeRow(
+            _parseRamList(oldVals['ram']),
+            _parseRamList(newVals['ram']),
+            theme,
+          ),
+        );
+      }
+
+      // Handle Storage devices (JSONB array)
+      if (_hasListChanged(oldVals['storage'], newVals['storage'])) {
+        changes.add(
+          _buildStorageChangeRow(
+            _parseStorageList(oldVals['storage']),
+            _parseStorageList(newVals['storage']),
+            theme,
+          ),
+        );
+      }
     } else {
       // For requests, just show proposed values
-      for (final field in fieldsToCheck) {
+      for (final field in simpleFields) {
         final val = newVals[field]?.toString();
         if (val != null && val.isNotEmpty) {
           changes.add(_buildValueRow(_formatFieldName(field), val, theme));
         }
+      }
+
+      // Show RAM modules
+      final ramModules = _parseRamList(newVals['ram']);
+      if (ramModules.isNotEmpty) {
+        changes.add(_buildRamValueRow(ramModules, theme));
+      }
+
+      // Show Storage devices
+      final storageDevices = _parseStorageList(newVals['storage']);
+      if (storageDevices.isNotEmpty) {
+        changes.add(_buildStorageValueRow(storageDevices, theme));
       }
     }
 
@@ -306,14 +323,13 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
     final newVals = widget.newValues ?? {};
     final fields = <Widget>[];
 
+    // Simple text fields
     final fieldsToShow = {
       'tag_id': 'Tag ID',
       'serial_number': 'Serial Number',
       'model_number': 'Model Number',
       'cpu': 'CPU',
       'generation': 'Generation',
-      'ram': 'RAM',
-      'storage': 'Storage',
     };
 
     for (final entry in fieldsToShow.entries) {
@@ -321,6 +337,18 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
       if (val != null && val.isNotEmpty) {
         fields.add(_buildValueRow(entry.value, val, theme));
       }
+    }
+
+    // Handle RAM modules
+    final ramModules = _parseRamList(newVals['ram']);
+    if (ramModules.isNotEmpty) {
+      fields.add(_buildRamValueRow(ramModules, theme));
+    }
+
+    // Handle Storage devices
+    final storageDevices = _parseStorageList(newVals['storage']);
+    if (storageDevices.isNotEmpty) {
+      fields.add(_buildStorageValueRow(storageDevices, theme));
     }
 
     // Handle location
@@ -503,6 +531,259 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
         .split(' ')
         .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : w)
         .join(' ');
+  }
+
+  // Helper methods for RAM/Storage JSONB arrays
+
+  List<RamModuleModel> _parseRamList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .map((e) => RamModuleModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  }
+
+  List<StorageDeviceModel> _parseStorageList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .map((e) => StorageDeviceModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  }
+
+  bool _hasListChanged(dynamic oldList, dynamic newList) {
+    final oldJson = jsonEncode(oldList ?? []);
+    final newJson = jsonEncode(newList ?? []);
+    return oldJson != newJson;
+  }
+
+  Widget _buildRamChangeRow(
+    List<RamModuleModel> oldModules,
+    List<RamModuleModel> newModules,
+    ThemeData theme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'RAM Modules',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withValues(
+                      alpha: 0.3,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: oldModules.isEmpty
+                      ? Text(
+                          '(none)',
+                          style: TextStyle(color: theme.colorScheme.error),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: oldModules
+                              .map(
+                                (m) => Text(
+                                  m.displayText,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.error,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Icon(Icons.arrow_forward, size: 16),
+              ),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: newModules.isEmpty
+                      ? const Text(
+                          '(none)',
+                          style: TextStyle(color: Colors.green),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: newModules
+                              .map(
+                                (m) => Text(
+                                  m.displayText,
+                                  style: const TextStyle(color: Colors.green),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStorageChangeRow(
+    List<StorageDeviceModel> oldDevices,
+    List<StorageDeviceModel> newDevices,
+    ThemeData theme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Storage Devices',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withValues(
+                      alpha: 0.3,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: oldDevices.isEmpty
+                      ? Text(
+                          '(none)',
+                          style: TextStyle(color: theme.colorScheme.error),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: oldDevices
+                              .map(
+                                (d) => Text(
+                                  d.displayText,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.error,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Icon(Icons.arrow_forward, size: 16),
+              ),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: newDevices.isEmpty
+                      ? const Text(
+                          '(none)',
+                          style: TextStyle(color: Colors.green),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: newDevices
+                              .map(
+                                (d) => Text(
+                                  d.displayText,
+                                  style: const TextStyle(color: Colors.green),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRamValueRow(List<RamModuleModel> modules, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              'RAM',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: modules.map((m) => Text(m.displayText)).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStorageValueRow(
+    List<StorageDeviceModel> devices,
+    ThemeData theme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              'Storage',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: devices.map((d) => Text(d.displayText)).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

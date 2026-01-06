@@ -62,8 +62,11 @@ class FieldOptionModel {
     return switch (fieldName) {
       'cpu' => 'CPU',
       'generation' => 'Generation',
-      'ram' => 'RAM',
-      'storage' => 'Storage',
+      'ram_size' => 'RAM Size',
+      'ram_form_factor' => 'RAM Form Factor',
+      'ram_ddr_type' => 'RAM DDR Type',
+      'storage_size' => 'Storage Size',
+      'storage_type' => 'Storage Type',
       'model' => 'Model',
       _ => fieldName,
     };

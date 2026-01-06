@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/asset_audit_log_model.dart';
 import '../models/asset_model.dart';
+import '../models/ram_module_model.dart';
+import '../models/storage_device_model.dart';
 
 class AssetsRepository {
   final SupabaseClient _client;
@@ -33,8 +35,8 @@ class AssetsRepository {
     required String tagId,
     String? cpu,
     String? generation,
-    String? ram,
-    String? storage,
+    List<RamModuleModel>? ramModules,
+    List<StorageDeviceModel>? storageDevices,
     String? serialNumber,
     String? modelNumber,
     String? currentLocationId,
@@ -45,8 +47,8 @@ class AssetsRepository {
           'tag_id': tagId,
           'cpu': cpu,
           'generation': generation,
-          'ram': ram,
-          'storage': storage,
+          'ram': ramModules?.map((m) => m.toJson()).toList() ?? [],
+          'storage': storageDevices?.map((d) => d.toJson()).toList() ?? [],
           'serial_number': serialNumber,
           'model_number': modelNumber,
           'current_location_id': currentLocationId,
@@ -61,8 +63,8 @@ class AssetsRepository {
     required String id,
     String? cpu,
     String? generation,
-    String? ram,
-    String? storage,
+    List<RamModuleModel>? ramModules,
+    List<StorageDeviceModel>? storageDevices,
     String? serialNumber,
     String? modelNumber,
     String? currentLocationId,
@@ -72,8 +74,8 @@ class AssetsRepository {
         .update({
           'cpu': cpu,
           'generation': generation,
-          'ram': ram,
-          'storage': storage,
+          'ram': ramModules?.map((m) => m.toJson()).toList(),
+          'storage': storageDevices?.map((d) => d.toJson()).toList(),
           'serial_number': serialNumber,
           'model_number': modelNumber,
           'current_location_id': currentLocationId,

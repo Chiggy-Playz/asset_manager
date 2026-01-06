@@ -166,8 +166,14 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                     _buildInfoRow('Model Number', asset.modelNumber ?? '-'),
                     _buildInfoRow('CPU', asset.cpu ?? '-'),
                     _buildInfoRow('Generation', asset.generation ?? '-'),
-                    _buildInfoRow('RAM', asset.ram ?? '-'),
-                    _buildInfoRow('Storage', asset.storage ?? '-'),
+                    _buildInfoRow(
+                      'RAM',
+                      asset.ramModules.map((m) => m.displayText).join("\n"),
+                    ),
+                    _buildInfoRow(
+                      'Storage',
+                      asset.storageDevices.map((d) => d.displayText).join("\n"),
+                    ),
                     BlocBuilder<LocationsBloc, LocationsState>(
                       builder: (context, locState) {
                         final locations = switch (locState) {
@@ -380,7 +386,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     );
   }
 
-  String _getLocationFullPath(String? locationId, List<LocationModel> locations) {
+  String _getLocationFullPath(
+    String? locationId,
+    List<LocationModel> locations,
+  ) {
     if (locationId == null) return '-';
     if (locations.isEmpty) return '-';
     try {

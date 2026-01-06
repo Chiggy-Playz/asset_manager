@@ -196,8 +196,8 @@ class _AssetsPageState extends State<AssetsPage> {
                         DataCell(Text(asset.serialNumber ?? '-')),
                         DataCell(Text(asset.modelNumber ?? '-')),
                         DataCell(Text(asset.cpu ?? '-')),
-                        DataCell(Text(asset.ram ?? '-')),
-                        DataCell(Text(asset.storage ?? '-')),
+                        DataCell(Text(asset.ramSummary)),
+                        DataCell(Text(asset.storageSummary)),
                         DataCell(
                           Text(
                             _getLocationFullPath(
