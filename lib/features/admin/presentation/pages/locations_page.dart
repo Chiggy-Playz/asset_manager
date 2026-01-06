@@ -28,9 +28,9 @@ class _LocationsPageState extends State<LocationsPage> {
     return BlocConsumer<LocationsBloc, LocationsState>(
       listener: (context, state) {
         if (state is LocationActionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
         } else if (state is LocationsError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -75,8 +75,9 @@ class _LocationsPageState extends State<LocationsPage> {
 
     final tree = _getLocationTree(state);
     final flatLocations = _getLocations(state);
-    final actionLocationId =
-        state is LocationActionInProgress ? state.actionLocationId : null;
+    final actionLocationId = state is LocationActionInProgress
+        ? state.actionLocationId
+        : null;
 
     if (tree.isEmpty) {
       return const Center(child: Text('No locations found'));
@@ -89,12 +90,14 @@ class _LocationsPageState extends State<LocationsPage> {
       child: ListView(
         padding: const EdgeInsets.only(top: 8, bottom: 80),
         children: tree
-            .map((location) => _buildLocationTile(
-                  context,
-                  location,
-                  flatLocations,
-                  actionLocationId,
-                ))
+            .map(
+              (location) => _buildLocationTile(
+                context,
+                location,
+                flatLocations,
+                actionLocationId,
+              ),
+            )
             .toList(),
       ),
     );
@@ -117,14 +120,23 @@ class _LocationsPageState extends State<LocationsPage> {
         : 'L${location.level + 1}';
 
     final tile = ListTile(
+      onTap: hasChildren
+          ? () {
+              setState(() {
+                if (isExpanded) {
+                  _expandedIds.remove(location.id);
+                } else {
+                  _expandedIds.add(location.id);
+                }
+              });
+            }
+          : null,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (hasChildren)
             IconButton(
-              icon: Icon(
-                isExpanded ? Icons.expand_less : Icons.expand_more,
-              ),
+              icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
               onPressed: () {
                 setState(() {
                   if (isExpanded) {
@@ -141,8 +153,8 @@ class _LocationsPageState extends State<LocationsPage> {
             location.level == 0
                 ? Icons.location_city
                 : location.level == 1
-                    ? Icons.layers
-                    : Icons.room,
+                ? Icons.layers
+                : Icons.room,
             color: theme.colorScheme.primary,
           ),
         ],
@@ -166,7 +178,9 @@ class _LocationsPageState extends State<LocationsPage> {
             ),
         ],
       ),
-      subtitle: location.description != null ? Text(location.description!) : null,
+      subtitle: location.description != null
+          ? Text(location.description!)
+          : null,
       trailing: isLoading
           ? const SizedBox(
               width: 24,
@@ -241,12 +255,14 @@ class _LocationsPageState extends State<LocationsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: location.children
-                .map((child) => _buildLocationTile(
-                      context,
-                      child,
-                      flatLocations,
-                      actionLocationId,
-                    ))
+                .map(
+                  (child) => _buildLocationTile(
+                    context,
+                    child,
+                    flatLocations,
+                    actionLocationId,
+                  ),
+                )
                 .toList(),
           ),
         ),
@@ -280,8 +296,9 @@ class _LocationsPageState extends State<LocationsPage> {
   }) {
     final isEditing = location != null;
     final nameController = TextEditingController(text: location?.name ?? '');
-    final descriptionController =
-        TextEditingController(text: location?.description ?? '');
+    final descriptionController = TextEditingController(
+      text: location?.description ?? '',
+    );
     final formKey = GlobalKey<FormState>();
 
     // For new locations, use parentLocation if provided, otherwise null
@@ -298,7 +315,8 @@ class _LocationsPageState extends State<LocationsPage> {
       // Can't be its own parent
       if (isEditing && l.id == location.id) return false;
       // Can't select a descendant as parent (would create cycle)
-      if (isEditing && l.isDescendantOf(location.id, allLocations)) return false;
+      if (isEditing && l.isDescendantOf(location.id, allLocations))
+        return false;
       // Can only have up to 3 levels
       if (l.level >= 2) return false;
       return true;
@@ -313,8 +331,8 @@ class _LocationsPageState extends State<LocationsPage> {
               isEditing
                   ? 'Edit Location'
                   : parentLocation != null
-                      ? 'Add Sub-location to ${parentLocation.name}'
-                      : 'Add Location',
+                  ? 'Add Sub-location to ${parentLocation.name}'
+                  : 'Add Location',
             ),
             content: Form(
               key: formKey,
@@ -388,27 +406,25 @@ class _LocationsPageState extends State<LocationsPage> {
                     Navigator.of(dialogContext).pop();
                     if (isEditing) {
                       this.context.read<LocationsBloc>().add(
-                            LocationUpdateRequested(
-                              id: location.id,
-                              name: nameController.text.trim(),
-                              description:
-                                  descriptionController.text.trim().isEmpty
-                                      ? null
-                                      : descriptionController.text.trim(),
-                              parentId: selectedParentId,
-                            ),
-                          );
+                        LocationUpdateRequested(
+                          id: location.id,
+                          name: nameController.text.trim(),
+                          description: descriptionController.text.trim().isEmpty
+                              ? null
+                              : descriptionController.text.trim(),
+                          parentId: selectedParentId,
+                        ),
+                      );
                     } else {
                       this.context.read<LocationsBloc>().add(
-                            LocationCreateRequested(
-                              name: nameController.text.trim(),
-                              description:
-                                  descriptionController.text.trim().isEmpty
-                                      ? null
-                                      : descriptionController.text.trim(),
-                              parentId: selectedParentId,
-                            ),
-                          );
+                        LocationCreateRequested(
+                          name: nameController.text.trim(),
+                          description: descriptionController.text.trim().isEmpty
+                              ? null
+                              : descriptionController.text.trim(),
+                          parentId: selectedParentId,
+                        ),
+                      );
                     }
                   }
                 },
@@ -431,9 +447,9 @@ class _LocationsPageState extends State<LocationsPage> {
         content: Text(
           hasChildren
               ? 'Are you sure you want to delete "${location.name}" and all its sub-locations?\n\n'
-                  'Note: This will fail if any assets are currently at this location or its sub-locations.'
+                    'Note: This will fail if any assets are currently at this location or its sub-locations.'
               : 'Are you sure you want to delete "${location.name}"?\n\n'
-                  'Note: This will fail if any assets are currently at this location.',
+                    'Note: This will fail if any assets are currently at this location.',
         ),
         actions: [
           TextButton(
@@ -444,8 +460,8 @@ class _LocationsPageState extends State<LocationsPage> {
             onPressed: () {
               Navigator.of(dialogContext).pop();
               context.read<LocationsBloc>().add(
-                    LocationDeleteRequested(location.id),
-                  );
+                LocationDeleteRequested(location.id),
+              );
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
