@@ -18,11 +18,6 @@ class AuthOtpSent extends AuthState {
   AuthOtpSent(this.email);
 }
 
-class AuthMagicLinkSent extends AuthState {
-  final String email;
-  AuthMagicLinkSent(this.email);
-}
-
 class AuthError extends AuthState {
   final String message;
   AuthError(this.message);

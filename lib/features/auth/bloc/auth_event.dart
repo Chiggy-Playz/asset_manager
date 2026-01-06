@@ -9,11 +9,6 @@ class AuthStateChanged extends AuthEvent {
   AuthStateChanged(this.authState);
 }
 
-class SendMagicLinkRequested extends AuthEvent {
-  final String email;
-  SendMagicLinkRequested(this.email);
-}
-
 class SendOtpRequested extends AuthEvent {
   final String email;
   SendOtpRequested(this.email);
@@ -26,3 +21,5 @@ class VerifyOtpRequested extends AuthEvent {
 }
 
 class SignOutRequested extends AuthEvent {}
+
+class CancelOtpRequested extends AuthEvent {}

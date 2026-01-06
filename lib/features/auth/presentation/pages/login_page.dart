@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
-import '../../../../core/utils/platform_utils.dart';
 import '../../../../core/utils/responsive.dart';
-import '../widgets/magic_link_form.dart';
 import '../widgets/otp_form.dart';
 
 class LoginPage extends StatelessWidget {
@@ -42,11 +40,7 @@ class LoginPage extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       const Gap(32),
-                      // Platform-adaptive login form
-                      if (PlatformUtils.isDesktop)
-                        const OtpForm()
-                      else
-                        const MagicLinkForm(),
+                      const OtpForm(),
                     ],
                   ),
                 );

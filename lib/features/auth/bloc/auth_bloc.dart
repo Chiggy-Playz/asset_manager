@@ -16,10 +16,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthStateChanged>(_onAuthStateChanged);
-    on<SendMagicLinkRequested>(_onSendMagicLinkRequested);
     on<SendOtpRequested>(_onSendOtpRequested);
     on<VerifyOtpRequested>(_onVerifyOtpRequested);
     on<SignOutRequested>(_onSignOutRequested);
+    on<CancelOtpRequested>(_onCancelOtpRequested);
 
     _subscribeToAuthChanges();
   }
@@ -50,25 +50,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (session != null) {
       emit(Authenticated(session.user));
     } else {
-      // Only emit Unauthenticated if we're not in a sending OTP/magic link state
-      if (state is! AuthOtpSent && state is! AuthMagicLinkSent) {
+      // Only emit Unauthenticated if we're not in a sending OTP state
+      if (state is! AuthOtpSent) {
         emit(Unauthenticated());
       }
-    }
-  }
-
-  Future<void> _onSendMagicLinkRequested(
-    SendMagicLinkRequested event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(AuthLoading());
-    try {
-      await _authRepository.sendMagicLink(event.email);
-      emit(AuthMagicLinkSent(event.email));
-    } on AuthException catch (e) {
-      emit(AuthError(e.message));
-    } catch (e) {
-      emit(AuthError('Failed to send magic link'));
     }
   }
 
@@ -120,6 +105,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(AuthError('Failed to sign out'));
     }
+  }
+
+  void _onCancelOtpRequested(
+    CancelOtpRequested event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(Unauthenticated());
   }
 
   @override

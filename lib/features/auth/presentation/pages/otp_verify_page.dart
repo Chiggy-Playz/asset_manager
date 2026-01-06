@@ -6,6 +6,7 @@ import '../../../../core/utils/responsive.dart';
 import '../../bloc/auth_bloc.dart';
 import '../../bloc/auth_event.dart';
 import '../../bloc/auth_state.dart';
+import '../widgets/otp_input_field.dart';
 
 class OtpVerifyPage extends StatefulWidget {
   const OtpVerifyPage({super.key});
@@ -15,7 +16,6 @@ class OtpVerifyPage extends StatefulWidget {
 }
 
 class _OtpVerifyPageState extends State<OtpVerifyPage> {
-  final _formKey = GlobalKey<FormState>();
   final _otpController = TextEditingController();
 
   @override
@@ -25,14 +25,19 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
   }
 
   void _onVerify(String email) {
-    if (_formKey.currentState!.validate()) {
-      context.read<AuthBloc>().add(
-            VerifyOtpRequested(
-              email: email,
-              token: _otpController.text.trim(),
-            ),
-          );
+    final otp = _otpController.text.trim();
+    if (otp.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a 6-digit code')),
+      );
+      return;
     }
+    context.read<AuthBloc>().add(
+          VerifyOtpRequested(
+            email: email,
+            token: otp,
+          ),
+        );
   }
 
   @override
@@ -41,7 +46,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
       appBar: AppBar(
         leading: BackButton(
           onPressed: () {
-            context.read<AuthBloc>().add(AuthCheckRequested());
+            context.read<AuthBloc>().add(CancelOtpRequested());
           },
         ),
       ),
@@ -72,64 +77,80 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
 
                     return ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: maxWidth),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'Enter Code',
-                              style: Theme.of(context).textTheme.headlineLarge,
-                              textAlign: TextAlign.center,
-                            ),
-                            const Gap(8),
-                            Text(
-                              'We sent a code to $email',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                              textAlign: TextAlign.center,
-                            ),
-                            const Gap(32),
-                            TextFormField(
-                              controller: _otpController,
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineMedium,
-                              decoration: const InputDecoration(
-                                hintText: '000000',
-                                border: OutlineInputBorder(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Enter Code',
+                            style: Theme.of(context).textTheme.headlineLarge,
+                            textAlign: TextAlign.center,
+                          ),
+                          const Gap(8),
+                          Text(
+                            'We sent a code to $email',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                            textAlign: TextAlign.center,
+                          ),
+                          const Gap(32),
+                          OtpInputField(
+                            controller: _otpController,
+                            onCompleted: (_) {
+                              if (!isLoading) {
+                                _onVerify(
+                                  state is AuthOtpSent ? state.email : '',
+                                );
+                              }
+                            },
+                          ),
+                          const Gap(16),
+                          FilledButton(
+                            onPressed: isLoading
+                                ? null
+                                : () => _onVerify(
+                                      state is AuthOtpSent
+                                          ? state.email
+                                          : '',
+                                    ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Text('Verify'),
+                          ),
+                          const Gap(24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Didn't receive the code? ",
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
-                              maxLength: 6,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter the code';
-                                }
-                                if (value.length != 6) {
-                                  return 'Code must be 6 digits';
-                                }
-                                return null;
-                              },
-                            ),
-                            const Gap(16),
-                            FilledButton(
-                              onPressed: isLoading
-                                  ? null
-                                  : () => _onVerify(
-                                        state is AuthOtpSent
-                                            ? state.email
-                                            : '',
-                                      ),
-                              child: isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    )
-                                  : const Text('Verify'),
-                            ),
-                          ],
-                        ),
+                              TextButton(
+                                onPressed: isLoading
+                                    ? null
+                                    : () {
+                                        if (state is AuthOtpSent) {
+                                          context.read<AuthBloc>().add(
+                                                SendOtpRequested(state.email),
+                                              );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content:
+                                                  Text('Code resent to your email'),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                child: const Text('Resend'),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     );
                   },

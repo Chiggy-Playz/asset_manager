@@ -65,26 +65,20 @@ GoRouter createAppRouter({
       final isLoggedIn = authState is Authenticated;
       final isLoading = authState is AuthLoading;
       final isOtpSent = authState is AuthOtpSent;
-      final isMagicLinkSent = authState is AuthMagicLinkSent;
       final hasProfile = profileState is ProfileLoaded;
       final profileLoading = profileState is ProfileLoading;
 
       // Allow loading states
       if (isLoading || profileLoading) return null;
 
-      // Auth flow states (OTP sent, waiting for magic link)
+      // Auth flow states (OTP sent, waiting for verification)
       if (isOtpSent) {
         return location == Routes.otpVerify ? null : Routes.otpVerify;
-      }
-      if (isMagicLinkSent) {
-        return location == Routes.login ? null : Routes.login;
       }
 
       // Not logged in - go to login
       if (!isLoggedIn) {
-        return [Routes.login, Routes.otpVerify].contains(location)
-            ? null
-            : Routes.login;
+        return location == Routes.login ? null : Routes.login;
       }
 
       // Logged in but profile state needs to be checked
