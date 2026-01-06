@@ -86,11 +86,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(Authenticated(response.user!));
       } else {
         emit(AuthError('Verification failed'));
+        emit(AuthOtpSent(event.email)); // Stay on OTP page
       }
     } on AuthException catch (e) {
       emit(AuthError(e.message));
+      emit(AuthOtpSent(event.email)); // Stay on OTP page
     } catch (e) {
       emit(AuthError('Failed to verify OTP'));
+      emit(AuthOtpSent(event.email)); // Stay on OTP page
     }
   }
 
