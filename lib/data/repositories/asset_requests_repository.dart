@@ -92,7 +92,7 @@ class AssetRequestsRepository {
 
   /// Approve and apply a request in one step (admin only)
   /// Returns the result including asset_id on success, or auto_rejected on conflict
-  Future<Map<String, dynamic>> approveRequest(
+  Future<Map<String, dynamic>> approveRequest(  
     String requestId, {
     String? notes,
   }) async {

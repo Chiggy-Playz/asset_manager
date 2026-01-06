@@ -824,18 +824,19 @@ CREATE FUNCTION public.asset_request_populate_current_data() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  SELECT jsonb_build_object(
-    'cpu', cpu,
-    'generation', generation,
-    'ram', ram,          -- Now JSONB array
-    'storage', storage,  -- Now JSONB array
-    'serial_number', serial_number,
-    'model_number', model_number
-  )
-  INTO NEW.current_data
-  FROM assets
-  WHERE id = NEW.asset_id;
-  RETURN NEW;
+SELECT jsonb_build_object(
+      'cpu', cpu,
+      'generation', generation,
+      'ram', ram,
+      'storage', storage,
+      'serial_number', serial_number,
+      'model_number', model_number,
+      'current_location_id', current_location_id
+    )
+INTO NEW.current_data
+FROM assets
+WHERE id = NEW.asset_id;
+RETURN NEW;
 END;
 $$;
 
@@ -4521,7 +4522,7 @@ CREATE TRIGGER asset_audit_trigger AFTER INSERT OR DELETE OR UPDATE ON public.as
 -- Name: asset_requests asset_request_before_insert; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER asset_request_before_insert BEFORE INSERT ON public.asset_requests FOR EACH ROW WHEN ((new.request_type = 'update'::text)) EXECUTE FUNCTION public.asset_request_populate_current_data();
+CREATE TRIGGER asset_request_before_insert BEFORE INSERT ON public.asset_requests FOR EACH ROW WHEN (((new.request_type = 'update'::text) OR (new.request_type = 'transfer'::text))) EXECUTE FUNCTION public.asset_request_populate_current_data();
 
 
 --
@@ -5287,4 +5288,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260106125050'),
     ('20260106154825'),
     ('20260106162936'),
+    ('20260106203260'),
+    ('20260106203337'),
     ('20260107130000');

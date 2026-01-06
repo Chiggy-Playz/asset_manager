@@ -1,3 +1,7 @@
+import 'package:asset_manager/features/profile/bloc/profile_bloc.dart';
+import 'package:asset_manager/features/profile/bloc/profile_state.dart';
+import 'package:asset_manager/features/requests/bloc/asset_requests_bloc.dart';
+import 'package:asset_manager/features/requests/bloc/asset_requests_event.dart';
 import 'package:asset_manager/shared/widgets/changes_detail_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -440,14 +444,34 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   }
 
   void _showTransferDialog(BuildContext context, AssetModel asset) {
+    final profileState = context.read<ProfileBloc>().state;
+    final isAdmin =
+        profileState is ProfileLoaded && profileState.profile.isAdmin;
     showDialog(
       context: context,
       builder: (dialogContext) => TransferDialog(
         currentLocationId: asset.currentLocationId,
         onTransfer: (locationId) {
-          context.read<AssetsBloc>().add(
-            AssetTransferRequested(id: asset.id, toLocationId: locationId),
-          );
+          if (isAdmin) {
+            context.read<AssetsBloc>().add(
+              AssetTransferRequested(id: asset.id, toLocationId: locationId),
+            );
+          } else {
+            context.read<AssetRequestsBloc>().add(
+              AssetRequestCreateRequested(
+                requestType: "transfer",
+                requestData: {"current_location_id": locationId},
+                assetId: asset.id,
+              ),
+            );
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Transfer request submitted for approval'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         },
       ),
     );
