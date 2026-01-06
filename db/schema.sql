@@ -725,7 +725,7 @@ BEGIN
   -- Get current user as reviewer
   v_reviewer_id := auth.uid();
 
-  -- Fetch the request
+  -- Fetch the requestw
   SELECT * INTO v_request
   FROM asset_requests
   WHERE id = p_request_id;
@@ -836,6 +836,22 @@ INTO NEW.current_data
 FROM assets
 WHERE id = NEW.asset_id;
 RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: capitalize_asset_attributes(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.capitalize_asset_attributes() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.serial_number := UPPER(NEW.serial_number);
+    NEW.model_number := UPPER(NEW.model_number);
+    NEW.tag_id := UPPER(NEW.tag_id);
+    RETURN NEW;
 END;
 $$;
 
@@ -4510,6 +4526,13 @@ CREATE TRIGGER assets_updated_at BEFORE UPDATE ON public.assets FOR EACH ROW EXE
 
 
 --
+-- Name: assets capitalize_asset_attributes_trigger; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER capitalize_asset_attributes_trigger BEFORE INSERT OR UPDATE ON public.assets FOR EACH ROW EXECUTE FUNCTION public.capitalize_asset_attributes();
+
+
+--
 -- Name: locations enforce_location_depth; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5255,4 +5278,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260104122803'),
     ('20260104173852'),
     ('20260105054216'),
-    ('20260106125050');
+    ('20260106125050'),
+    ('20260106154825');
