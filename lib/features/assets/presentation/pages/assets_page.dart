@@ -79,27 +79,37 @@ class _AssetsPageState extends State<AssetsPage> {
         : null;
 
     if (assets.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        onRefresh: () async {
+          context.read<AssetsBloc>().add(AssetsFetchRequested());
+        },
+        child: Stack(
           children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No assets yet',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Start by adding new assets to your inventory',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
+            ListView(),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.inbox_outlined,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No assets yet',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start by adding new assets to your inventory',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -188,17 +198,22 @@ class _AssetsPageState extends State<AssetsPage> {
                         DataCell(Text(asset.cpu ?? '-')),
                         DataCell(Text(asset.ram ?? '-')),
                         DataCell(Text(asset.storage ?? '-')),
-                        DataCell(Text(_getLocationFullPath(
-                          asset.currentLocationId,
-                          locations,
-                        ))),
+                        DataCell(
+                          Text(
+                            _getLocationFullPath(
+                              asset.currentLocationId,
+                              locations,
+                            ),
+                          ),
+                        ),
                         DataCell(
                           isLoading
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -220,7 +235,9 @@ class _AssetsPageState extends State<AssetsPage> {
                                       icon: const Icon(Icons.delete),
                                       tooltip: 'Delete',
                                       onPressed: () => _showDeleteConfirmation(
-                                          context, asset),
+                                        context,
+                                        asset,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -255,7 +272,10 @@ class _AssetsPageState extends State<AssetsPage> {
     };
   }
 
-  String _getLocationFullPath(String? locationId, List<LocationModel> locations) {
+  String _getLocationFullPath(
+    String? locationId,
+    List<LocationModel> locations,
+  ) {
     if (locationId == null) return '-';
     if (locations.isEmpty) return '-';
     try {
