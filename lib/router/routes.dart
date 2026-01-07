@@ -20,6 +20,7 @@ abstract class Routes {
   static const adminLocations = '/home/admin/locations';
   static const adminFieldOptions = '/home/admin/field-options';
   static const adminRequests = '/home/admin/requests';
+  static const adminAuditLogs = '/home/admin/audit-logs';
 
   // Settings
   static const settings = '/home/settings';

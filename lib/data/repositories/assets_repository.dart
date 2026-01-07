@@ -117,6 +117,17 @@ class AssetsRepository {
         .toList();
   }
 
+  Future<List<AssetAuditLogModel>> fetchAllAuditLogs() async {
+    final response = await _client
+        .from('asset_audit_logs')
+        .select('*, profiles(name)')
+        .order('created_at', ascending: false);
+
+    return (response as List)
+        .map((json) => AssetAuditLogModel.fromJson(json))
+        .toList();
+  }
+
   /// Validate tag_id uniqueness before creating a request
   Future<Map<String, dynamic>> validateTagId(
     String tagId, {

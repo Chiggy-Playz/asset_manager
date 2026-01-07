@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/repositories/asset_requests_repository.dart';
 import '../features/admin/presentation/pages/admin_page.dart';
+import '../features/admin/presentation/pages/audit_logs_page.dart';
 import '../features/requests/bloc/asset_requests_bloc.dart';
 import '../features/admin/presentation/pages/field_options_page.dart';
 import '../features/admin/presentation/pages/locations_page.dart';
@@ -206,6 +207,10 @@ GoRouter createAppRouter({
                       ),
                       child: const RequestsManagementPage(),
                     ),
+                  ),
+                  GoRoute(
+                    path: 'audit-logs',
+                    builder: (context, state) => const AuditLogsPage(),
                   ),
                 ],
               ),

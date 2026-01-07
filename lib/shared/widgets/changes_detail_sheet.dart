@@ -382,11 +382,50 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
   }
 
   Widget _buildDeleteDetail(ThemeData theme) {
+    final oldVals = widget.oldValues ?? {};
+    final fields = <Widget>[];
+
+    // Show deleted asset data if available (from audit log)
+    if (widget.oldValues != null) {
+      final fieldsToShow = {
+        'tag_id': 'Tag ID',
+        'serial_number': 'Serial Number',
+        'model_number': 'Model Number',
+        'cpu': 'CPU',
+        'generation': 'Generation',
+      };
+
+      for (final entry in fieldsToShow.entries) {
+        final val = oldVals[entry.key]?.toString();
+        if (val != null && val.isNotEmpty) {
+          fields.add(_buildValueRow(entry.value, val, theme));
+        }
+      }
+
+      // Handle RAM modules
+      final ramModules = _parseRamList(oldVals['ram']);
+      if (ramModules.isNotEmpty) {
+        fields.add(_buildRamValueRow(ramModules, theme));
+      }
+
+      // Handle Storage devices
+      final storageDevices = _parseStorageList(oldVals['storage']);
+      if (storageDevices.isNotEmpty) {
+        fields.add(_buildStorageValueRow(storageDevices, theme));
+      }
+
+      // Handle location
+      final locationId = oldVals['current_location_id'] as String?;
+      if (locationId != null) {
+        fields.add(
+          _buildValueRow('Location', _getLocationName(locationId), theme),
+        );
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Delete Details', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -408,6 +447,12 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
             ],
           ),
         ),
+        if (fields.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text('Deleted Asset Data', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 16),
+          ...fields,
+        ],
       ],
     );
   }

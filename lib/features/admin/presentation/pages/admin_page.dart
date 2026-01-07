@@ -23,6 +23,14 @@ class AdminPage extends StatelessWidget {
           ),
           const Divider(height: 1),
           ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('Audit Logs'),
+            subtitle: const Text('View all asset change history'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(Routes.adminAuditLogs),
+          ),
+          const Divider(height: 1),
+          ListTile(
             leading: const Icon(Icons.people_outline),
             title: const Text('Users'),
             subtitle: const Text('Manage user accounts'),
