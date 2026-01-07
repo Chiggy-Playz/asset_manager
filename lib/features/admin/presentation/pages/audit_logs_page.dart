@@ -17,15 +17,41 @@ class AuditLogsPage extends StatefulWidget {
 }
 
 class _AuditLogsPageState extends State<AuditLogsPage> {
-  List<AssetAuditLogModel>? _auditLogs;
+  static const _pageSize = 20;
+
+  final _scrollController = ScrollController();
+  final _repository = AssetsRepository();
+
+  List<AssetAuditLogModel> _auditLogs = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
     context.read<LocationsBloc>().add(LocationsFetchRequested());
+    _scrollController.addListener(_onScroll);
     _loadAuditLogs();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isLoadingMore || !_hasMore) return;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final threshold = maxScroll * 0.8;
+
+    if (currentScroll >= threshold) {
+      _loadMore();
+    }
   }
 
   Future<void> _loadAuditLogs() async {
@@ -35,11 +61,15 @@ class _AuditLogsPageState extends State<AuditLogsPage> {
     });
 
     try {
-      final logs = await AssetsRepository().fetchAllAuditLogs();
+      final logs = await _repository.fetchAllAuditLogs(
+        limit: _pageSize,
+        offset: 0,
+      );
       if (mounted) {
         setState(() {
           _auditLogs = logs;
           _isLoading = false;
+          _hasMore = logs.length >= _pageSize;
         });
       }
     } catch (e) {
@@ -50,6 +80,42 @@ class _AuditLogsPageState extends State<AuditLogsPage> {
         });
       }
     }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final logs = await _repository.fetchAllAuditLogs(
+        limit: _pageSize,
+        offset: _auditLogs.length,
+      );
+      if (mounted) {
+        setState(() {
+          _auditLogs.addAll(logs);
+          _isLoadingMore = false;
+          _hasMore = logs.length >= _pageSize;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load more: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _onRefresh() async {
+    _hasMore = true;
+    await _loadAuditLogs();
   }
 
   @override
@@ -110,7 +176,7 @@ class _AuditLogsPageState extends State<AuditLogsPage> {
       );
     }
 
-    if (_auditLogs == null || _auditLogs!.isEmpty) {
+    if (_auditLogs.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -140,12 +206,19 @@ class _AuditLogsPageState extends State<AuditLogsPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadAuditLogs,
+      onRefresh: _onRefresh,
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
-        itemCount: _auditLogs!.length,
+        itemCount: _auditLogs.length + (_isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
-          final log = _auditLogs![index];
+          if (index >= _auditLogs.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final log = _auditLogs[index];
           return AuditLogCard(log: log, locations: locations);
         },
       ),

@@ -117,11 +117,15 @@ class AssetsRepository {
         .toList();
   }
 
-  Future<List<AssetAuditLogModel>> fetchAllAuditLogs() async {
+  Future<List<AssetAuditLogModel>> fetchAllAuditLogs({
+    int limit = 20,
+    int offset = 0,
+  }) async {
     final response = await _client
         .from('asset_audit_logs')
         .select('*, profiles(name)')
-        .order('created_at', ascending: false);
+        .order('created_at', ascending: false)
+        .range(offset, offset + limit - 1);
 
     return (response as List)
         .map((json) => AssetAuditLogModel.fromJson(json))
