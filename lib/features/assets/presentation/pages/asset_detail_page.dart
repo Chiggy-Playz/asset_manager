@@ -478,30 +478,95 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   }
 
   void _showDeleteConfirmation(BuildContext context, AssetModel asset) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Asset'),
-        content: Text(
-          'Are you sure you want to delete asset ${asset.tagId}? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+    final profileState = context.read<ProfileBloc>().state;
+    final isAdmin =
+        profileState is ProfileLoaded && profileState.profile.isAdmin;
+
+    if (isAdmin) {
+      // Admin: Show simple confirmation and delete directly
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Delete Asset'),
+          content: Text(
+            'Are you sure you want to delete asset ${asset.tagId}? This action cannot be undone.',
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              context.read<AssetsBloc>().add(AssetDeleteRequested(asset.id));
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
             ),
-            child: const Text('Delete'),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.read<AssetsBloc>().add(AssetDeleteRequested(asset.id));
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Non-admin: Create a delete request
+      final reasonController = TextEditingController();
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Request Asset Deletion'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Request deletion of asset ${asset.tagId}. An admin will review your request.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  labelText: 'Reason (optional)',
+                  hintText: 'Why should this asset be deleted?',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.read<AssetRequestsBloc>().add(
+                  AssetRequestCreateRequested(
+                    requestType: 'delete',
+                    assetId: asset.id,
+                    requestData: {},
+                    requestNotes: reasonController.text.trim().isEmpty
+                        ? null
+                        : reasonController.text.trim(),
+                  ),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Delete request submitted for approval'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Request Deletion'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
