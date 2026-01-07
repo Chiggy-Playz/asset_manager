@@ -722,10 +722,13 @@ DECLARE
   v_tag_id text;
   v_reviewer_id uuid;
 BEGIN
-  -- Get current user as reviewer
+  -- Require authentication
+  IF auth.uid() IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Authentication required');
+  END IF;
+
   v_reviewer_id := auth.uid();
 
-  -- Fetch the request
   SELECT * INTO v_request
   FROM asset_requests
   WHERE id = p_request_id;
@@ -738,11 +741,9 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Request is not pending');
   END IF;
 
-  -- For create requests, validate tag_id one more time
   IF v_request.request_type = 'create' THEN
     v_tag_id := v_request.request_data->>'tag_id';
     IF EXISTS(SELECT 1 FROM assets WHERE tag_id = v_tag_id) THEN
-      -- Auto-reject with note (race condition occurred)
       UPDATE asset_requests SET
         status = 'rejected',
         reviewed_by = v_reviewer_id,
@@ -758,10 +759,8 @@ BEGIN
     END IF;
   END IF;
 
-  -- Set the user context for audit logging (original requester)
   PERFORM set_config('app.requested_by', v_request.requested_by::text, true);
 
-  -- Apply the changes based on request type
   CASE v_request.request_type
     WHEN 'create' THEN
       INSERT INTO assets (
@@ -800,7 +799,6 @@ BEGIN
 
   END CASE;
 
-  -- Mark request as approved
   UPDATE asset_requests SET
     status = 'approved',
     reviewed_by = v_reviewer_id,
@@ -980,6 +978,11 @@ CREATE FUNCTION public.reject_request(p_request_id uuid, p_notes text DEFAULT NU
 DECLARE
   v_reviewer_id uuid;
 BEGIN
+  -- Require authentication
+  IF auth.uid() IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Authentication required');
+  END IF;
+
   v_reviewer_id := auth.uid();
 
   UPDATE asset_requests SET
@@ -1037,14 +1040,17 @@ DECLARE
   v_exists_in_assets boolean;
   v_exists_in_requests boolean;
 BEGIN
-  -- Check if tag_id exists in assets table
+  -- Require authentication
+  IF auth.uid() IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Authentication required');
+  END IF;
+
   SELECT EXISTS(
     SELECT 1 FROM assets
     WHERE tag_id = p_tag_id
     AND (p_exclude_asset_id IS NULL OR id != p_exclude_asset_id)
   ) INTO v_exists_in_assets;
 
-  -- Check if tag_id exists in pending create requests
   SELECT EXISTS(
     SELECT 1 FROM asset_requests
     WHERE request_type = 'create'
@@ -5290,4 +5296,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260106162936'),
     ('20260106203260'),
     ('20260106203337'),
+    ('20260107073019'),
     ('20260107130000');
