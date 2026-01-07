@@ -108,7 +108,7 @@ class AssetsRepository {
   Future<List<AssetAuditLogModel>> fetchAssetHistory(String assetId) async {
     final response = await _client
         .from('asset_audit_logs')
-        .select('*, profiles(name)')
+        .select('*, profiles(name), asset_requests(request_notes)')
         .eq('asset_id', assetId)
         .order('created_at', ascending: false);
 
@@ -123,7 +123,7 @@ class AssetsRepository {
   }) async {
     final response = await _client
         .from('asset_audit_logs')
-        .select('*, profiles(name)')
+        .select('*, profiles(name), asset_requests(request_notes)')
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
 

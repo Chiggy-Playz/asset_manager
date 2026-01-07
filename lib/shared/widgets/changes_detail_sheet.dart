@@ -22,6 +22,7 @@ class ChangesDetailSheet extends StatefulWidget {
   final ChangeType changeType;
   final Map<String, dynamic>? oldValues;
   final Map<String, dynamic>? newValues;
+  final String? requestNotes;
 
   const ChangesDetailSheet({
     super.key,
@@ -31,6 +32,7 @@ class ChangesDetailSheet extends StatefulWidget {
     required this.changeType,
     this.oldValues,
     this.newValues,
+    this.requestNotes,
   });
 
   /// Show changes from an asset audit log
@@ -53,6 +55,7 @@ class ChangesDetailSheet extends StatefulWidget {
         changeType: _actionToChangeType(log.action),
         oldValues: log.oldValues,
         newValues: log.newValues,
+        requestNotes: log.requestNotes,
       ),
     );
   }
@@ -185,6 +188,49 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
                       color: theme.colorScheme.outline,
                     ),
                   ),
+                if (widget.requestNotes != null &&
+                    widget.requestNotes!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.colorScheme.primaryContainer,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.note_outlined,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Request Notes',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.requestNotes!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const Divider(height: 32),
                 _buildContent(theme),
                 const SizedBox(height: 16),

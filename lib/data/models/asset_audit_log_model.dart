@@ -6,9 +6,11 @@ class AssetAuditLogModel {
   final Map<String, dynamic>? oldValues;
   final Map<String, dynamic>? newValues;
   final DateTime createdAt;
+  final String? requestId;
 
   // Populated from joined query
   final String? userName;
+  final String? requestNotes;
 
   const AssetAuditLogModel({
     required this.id,
@@ -18,12 +20,16 @@ class AssetAuditLogModel {
     this.oldValues,
     this.newValues,
     required this.createdAt,
+    this.requestId,
     this.userName,
+    this.requestNotes,
   });
 
   factory AssetAuditLogModel.fromJson(Map<String, dynamic> json) {
     // Handle nested profile object from joined query
     final profile = json['profiles'] as Map<String, dynamic>?;
+    // Handle nested request object from joined query
+    final request = json['asset_requests'] as Map<String, dynamic>?;
 
     return AssetAuditLogModel(
       id: json['id'] as String,
@@ -33,7 +39,9 @@ class AssetAuditLogModel {
       oldValues: json['old_values'] as Map<String, dynamic>?,
       newValues: json['new_values'] as Map<String, dynamic>?,
       createdAt: DateTime.parse(json['created_at'] as String),
+      requestId: json['request_id'] as String?,
       userName: profile?['name'] as String?,
+      requestNotes: request?['request_notes'] as String?,
     );
   }
 
@@ -53,4 +61,5 @@ class AssetAuditLogModel {
   bool get isUpdated => action == 'updated';
   bool get isDeleted => action == 'deleted';
   bool get isTransferred => action == 'transferred';
+  bool get hasLinkedRequest => requestId != null;
 }

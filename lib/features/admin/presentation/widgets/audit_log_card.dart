@@ -9,11 +9,7 @@ class AuditLogCard extends StatelessWidget {
   final AssetAuditLogModel log;
   final List<LocationModel> locations;
 
-  const AuditLogCard({
-    super.key,
-    required this.log,
-    required this.locations,
-  });
+  const AuditLogCard({super.key, required this.log, required this.locations});
 
   @override
   Widget build(BuildContext context) {
@@ -75,17 +71,20 @@ class AuditLogCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      actionTitle,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            actionTitle,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     if (tagId != null)
-                      Text(
-                        'Asset $tagId',
-                        style: theme.textTheme.bodyMedium,
-                      ),
+                      Text('Asset $tagId', style: theme.textTheme.bodyMedium),
                     Text(
                       'by ${log.userName ?? 'Unknown'}',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -105,10 +104,7 @@ class AuditLogCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Icon(
-                    Icons.chevron_right,
-                    color: theme.colorScheme.outline,
-                  ),
+                  Icon(Icons.chevron_right, color: theme.colorScheme.outline),
                 ],
               ),
             ],

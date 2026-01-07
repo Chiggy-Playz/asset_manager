@@ -8,3 +8,7 @@ Always adhere to material 3 design principles when creating UI components.
 # Security
 
 When working with sql tables, always enable RLS (Row Level Security) to ensure data security and proper access control. Make sure only authorized users can access or modify sensitive data.
+
+# DB Migrations
+
+Use `dbmate new <migration_name>` to create new migration files.

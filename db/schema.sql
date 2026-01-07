@@ -759,7 +759,9 @@ BEGIN
     END IF;
   END IF;
 
+  -- Set context variables for the trigger
   PERFORM set_config('app.requested_by', v_request.requested_by::text, true);
+  PERFORM set_config('app.request_id', p_request_id::text, true);
 
   CASE v_request.request_type
     WHEN 'create' THEN
@@ -936,9 +938,13 @@ CREATE FUNCTION public.log_asset_changes() RETURNS trigger
     AS $$
 DECLARE
   v_user_id uuid;
+  v_request_id uuid;
 BEGIN
   -- Check for override user (set by approve_and_apply_request)
   v_user_id := NULLIF(current_setting('app.requested_by', true), '')::uuid;
+
+  -- Check for request_id (set by approve_and_apply_request)
+  v_request_id := NULLIF(current_setting('app.request_id', true), '')::uuid;
 
   -- Fall back to current auth user
   IF v_user_id IS NULL THEN
@@ -946,23 +952,23 @@ BEGIN
   END IF;
 
   IF tg_op = 'INSERT' THEN
-    INSERT INTO asset_audit_logs (asset_id, user_id, action, new_values)
-    VALUES (new.id, v_user_id, 'created', to_jsonb(new));
+    INSERT INTO asset_audit_logs (asset_id, user_id, action, new_values, request_id)
+    VALUES (new.id, v_user_id, 'created', to_jsonb(new), v_request_id);
     RETURN new;
   ELSIF tg_op = 'UPDATE' THEN
     IF old.current_location_id IS DISTINCT FROM new.current_location_id THEN
-      INSERT INTO asset_audit_logs (asset_id, user_id, action, old_values, new_values)
-      VALUES (new.id, v_user_id, 'transferred', to_jsonb(old), to_jsonb(new));
+      INSERT INTO asset_audit_logs (asset_id, user_id, action, old_values, new_values, request_id)
+      VALUES (new.id, v_user_id, 'transferred', to_jsonb(old), to_jsonb(new), v_request_id);
     ELSE
-      INSERT INTO asset_audit_logs (asset_id, user_id, action, old_values, new_values)
-      VALUES (new.id, v_user_id, 'updated', to_jsonb(old), to_jsonb(new));
+      INSERT INTO asset_audit_logs (asset_id, user_id, action, old_values, new_values, request_id)
+      VALUES (new.id, v_user_id, 'updated', to_jsonb(old), to_jsonb(new), v_request_id);
     END IF;
     RETURN new;
   ELSIF tg_op = 'DELETE' THEN
     -- Use NULL for asset_id since the asset is being deleted.
     -- The original asset ID and all data is preserved in old_values.
-    INSERT INTO asset_audit_logs (asset_id, user_id, action, old_values)
-    VALUES (NULL, v_user_id, 'deleted', to_jsonb(old));
+    INSERT INTO asset_audit_logs (asset_id, user_id, action, old_values, request_id)
+    VALUES (NULL, v_user_id, 'deleted', to_jsonb(old), v_request_id);
     RETURN old;
   END IF;
   RETURN null;
@@ -3269,6 +3275,7 @@ CREATE TABLE public.asset_audit_logs (
     old_values jsonb,
     new_values jsonb,
     created_at timestamp with time zone DEFAULT now(),
+    request_id uuid,
     CONSTRAINT asset_audit_logs_action_check CHECK ((action = ANY (ARRAY['created'::text, 'updated'::text, 'deleted'::text, 'transferred'::text])))
 );
 
@@ -4352,6 +4359,13 @@ CREATE INDEX asset_audit_logs_created_at_idx ON public.asset_audit_logs USING bt
 
 
 --
+-- Name: asset_audit_logs_request_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX asset_audit_logs_request_id_idx ON public.asset_audit_logs USING btree (request_id);
+
+
+--
 -- Name: asset_audit_logs_user_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4758,6 +4772,14 @@ ALTER TABLE ONLY auth.sso_domains
 
 ALTER TABLE ONLY public.asset_audit_logs
     ADD CONSTRAINT asset_audit_logs_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE SET NULL;
+
+
+--
+-- Name: asset_audit_logs asset_audit_logs_request_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.asset_audit_logs
+    ADD CONSTRAINT asset_audit_logs_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.asset_requests(id) ON DELETE SET NULL;
 
 
 --
@@ -5300,4 +5322,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260106203337'),
     ('20260107073019'),
     ('20260107100741'),
-    ('20260107130000');
+    ('20260107130000'),
+    ('20260107170318');
