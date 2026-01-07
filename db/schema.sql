@@ -959,8 +959,10 @@ BEGIN
     END IF;
     RETURN new;
   ELSIF tg_op = 'DELETE' THEN
+    -- Use NULL for asset_id since the asset is being deleted.
+    -- The original asset ID and all data is preserved in old_values.
     INSERT INTO asset_audit_logs (asset_id, user_id, action, old_values)
-    VALUES (old.id, v_user_id, 'deleted', to_jsonb(old));
+    VALUES (NULL, v_user_id, 'deleted', to_jsonb(old));
     RETURN old;
   END IF;
   RETURN null;
@@ -5297,4 +5299,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260106203260'),
     ('20260106203337'),
     ('20260107073019'),
+    ('20260107100741'),
     ('20260107130000');
