@@ -29,14 +29,17 @@ class AssetDetailContent extends StatefulWidget {
   });
 
   @override
-  State<AssetDetailContent> createState() => _AssetDetailContentState();
+  State<AssetDetailContent> createState() => AssetDetailContentState();
 }
 
-class _AssetDetailContentState extends State<AssetDetailContent> {
+class AssetDetailContentState extends State<AssetDetailContent> {
   List<AssetAuditLogModel>? _auditLogs;
   bool _loadingHistory = true;
   bool _isEditing = false;
   final _editFormKey = GlobalKey<AssetEditFormState>();
+
+  /// Whether the detail content is currently in edit mode
+  bool get isEditing => _isEditing;
 
   @override
   void initState() {
@@ -80,11 +83,20 @@ class _AssetDetailContentState extends State<AssetDetailContent> {
     await _loadAuditHistory();
   }
 
-  void _startEditing() {
+  /// Start editing the asset
+  void startEditing() {
     setState(() => _isEditing = true);
   }
 
-  Future<void> _cancelEditing() async {
+  /// Save the form if currently editing
+  void saveIfEditing() {
+    if (_isEditing) {
+      _editFormKey.currentState?.submit();
+    }
+  }
+
+  /// Cancel editing with confirmation if there are unsaved changes
+  Future<void> cancelEditing() async {
     final hasChanges = _editFormKey.currentState?.hasUnsavedChanges ?? false;
     if (hasChanges) {
       final result = await showDialog<bool>(
@@ -111,6 +123,11 @@ class _AssetDetailContentState extends State<AssetDetailContent> {
     setState(() => _isEditing = false);
   }
 
+  void _onEditSuccess() {
+    setState(() => _isEditing = false);
+    _loadAuditHistory();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<AssetsBloc, AssetsState>(
@@ -129,34 +146,31 @@ class _AssetDetailContentState extends State<AssetDetailContent> {
                 _isEditing ? _buildEditHeader(context) : _buildHeader(context),
                 Expanded(
                   child: _isEditing
-                      ? _buildConstrainedEditForm(
-                          onSuccess: () {
-                            setState(() => _isEditing = false);
-                            _loadAuditHistory();
-                          },
-                        )
+                      ? _buildConstrainedEditForm(onSuccess: _onEditSuccess)
                       : _buildBody(context),
                 ),
               ],
             )
           : _isEditing
-          ? _buildConstrainedEditForm(
-              onSuccess: () => setState(() => _isEditing = false),
-            )
-          : _buildBody(context),
+              ? _buildConstrainedEditForm(
+                  onSuccess: () => setState(() => _isEditing = false),
+                )
+              : _buildBody(context),
     );
   }
 
   Widget _buildConstrainedEditForm({required VoidCallback onSuccess}) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: AssetEditForm(
-          key: _editFormKey,
-          asset: widget.asset,
-          onSuccess: onSuccess,
-          onCancel: _cancelEditing,
+    return FocusTraversalGroup(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: AssetEditForm(
+            key: _editFormKey,
+            asset: widget.asset,
+            onSuccess: onSuccess,
+            onCancel: cancelEditing,
+          ),
         ),
       ),
     );
@@ -188,7 +202,7 @@ class _AssetDetailContentState extends State<AssetDetailContent> {
           IconButton(
             icon: const Icon(Icons.edit),
             tooltip: 'Edit',
-            onPressed: _startEditing,
+            onPressed: startEditing,
           ),
           IconButton(
             icon: const Icon(Icons.delete),
@@ -215,7 +229,7 @@ class _AssetDetailContentState extends State<AssetDetailContent> {
           IconButton(
             icon: const Icon(Icons.close),
             tooltip: 'Cancel',
-            onPressed: _cancelEditing,
+            onPressed: cancelEditing,
           ),
           const SizedBox(width: 8),
           Expanded(

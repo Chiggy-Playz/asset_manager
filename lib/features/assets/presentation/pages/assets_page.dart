@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,12 +26,57 @@ class AssetsPage extends StatefulWidget {
 
 class _AssetsPageState extends State<AssetsPage> {
   String? _selectedAssetId;
+  final _detailContentKey = GlobalKey<AssetDetailContentState>();
+  final _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     context.read<AssetsBloc>().add(AssetsFetchRequested());
     context.read<LocationsBloc>().add(LocationsFetchRequested());
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleEscape(List<AssetModel> assets) {
+    // If editing, let the detail content handle it
+    if (_detailContentKey.currentState?.isEditing ?? false) {
+      _detailContentKey.currentState?.cancelEditing();
+    } else if (_selectedAssetId != null) {
+      setState(() => _selectedAssetId = null);
+    }
+  }
+
+  void _handleEdit() {
+    if (_selectedAssetId != null) {
+      _detailContentKey.currentState?.startEditing();
+    }
+  }
+
+  void _handleSave() {
+    _detailContentKey.currentState?.saveIfEditing();
+  }
+
+  void _handleNavigate(List<AssetModel> assets, bool isPageUp) {
+    if (assets.isEmpty) return;
+
+    if (_selectedAssetId == null) {
+      setState(() => _selectedAssetId = assets.first.id);
+      return;
+    }
+
+    final currentIndex = assets.indexWhere((a) => a.id == _selectedAssetId);
+    if (currentIndex == -1) return;
+
+    final newIndex = isPageUp
+        ? (currentIndex - 1).clamp(0, assets.length - 1)
+        : (currentIndex + 1).clamp(0, assets.length - 1);
+
+    setState(() => _selectedAssetId = assets[newIndex].id);
   }
 
   @override
@@ -51,20 +97,42 @@ class _AssetsPageState extends State<AssetsPage> {
         }
       },
       builder: (context, state) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Assets')),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => context.go(Routes.assetCreate),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Asset'),
-          ),
-          body: ResponsiveBuilder(
-            builder: (context, screenSize) {
-              if (screenSize == ScreenSize.mobile) {
-                return _buildMobileView(context, state);
-              }
-              return _buildDesktopView(context, state);
-            },
+        final assets = _getAssets(state);
+
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape): () =>
+                _handleEscape(assets),
+            const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
+                context.go(Routes.assetCreate),
+            const SingleActivator(LogicalKeyboardKey.keyE, control: true):
+                _handleEdit,
+            const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+                _handleSave,
+            const SingleActivator(LogicalKeyboardKey.pageUp): () =>
+                _handleNavigate(assets, true),
+            const SingleActivator(LogicalKeyboardKey.pageDown): () =>
+                _handleNavigate(assets, false),
+          },
+          child: Focus(
+            focusNode: _focusNode,
+            autofocus: true,
+            child: Scaffold(
+              appBar: AppBar(title: const Text('Assets')),
+              floatingActionButton: FloatingActionButton.extended(
+                onPressed: () => context.go(Routes.assetCreate),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Asset'),
+              ),
+              body: ResponsiveBuilder(
+                builder: (context, screenSize) {
+                  if (screenSize == ScreenSize.mobile) {
+                    return _buildMobileView(context, state);
+                  }
+                  return _buildDesktopView(context, state);
+                },
+              ),
+            ),
           ),
         );
       },
@@ -140,8 +208,9 @@ class _AssetsPageState extends State<AssetsPage> {
     }
 
     final assets = _getAssets(state);
-    final actionAssetId =
-        state is AssetActionInProgress ? state.actionAssetId : null;
+    final actionAssetId = state is AssetActionInProgress
+        ? state.actionAssetId
+        : null;
 
     if (assets.isEmpty) {
       return const Center(child: Text('No assets found'));
@@ -182,7 +251,7 @@ class _AssetsPageState extends State<AssetsPage> {
             Expanded(
               child: selectedAsset != null
                   ? AssetDetailContent(
-                      key: ValueKey(selectedAsset.id),
+                      key: _detailContentKey,
                       asset: selectedAsset,
                       onDeleted: () => setState(() => _selectedAssetId = null),
                     )
