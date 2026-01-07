@@ -58,8 +58,8 @@ class _TransferDialogState extends State<TransferDialog> {
             return const Text('No locations available');
           }
 
-          return SizedBox(
-            width: double.maxFinite,
+          return ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 300, maxWidth: 400),
             child: LocationSelector(
               locations: locations,
               selectedLocationId: _selectedLocationId,

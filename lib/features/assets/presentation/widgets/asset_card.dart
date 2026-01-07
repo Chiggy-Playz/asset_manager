@@ -9,6 +9,7 @@ class AssetCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final bool isLoading;
+  final bool isSelected;
   final String? locationFullPath;
 
   const AssetCard({
@@ -19,6 +20,7 @@ class AssetCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.isLoading = false,
+    this.isSelected = false,
     this.locationFullPath,
   });
 
@@ -28,6 +30,15 @@ class AssetCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: isSelected
+          ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+          : null,
+      shape: isSelected
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: theme.colorScheme.primary, width: 2),
+            )
+          : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -68,51 +79,6 @@ class AssetCard extends StatelessWidget {
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'transfer':
-                            onTransfer?.call();
-                          case 'edit':
-                            onEdit?.call();
-                          case 'delete':
-                            onDelete?.call();
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'transfer',
-                          child: Row(
-                            children: [
-                              Icon(Icons.swap_horiz),
-                              SizedBox(width: 8),
-                              Text('Transfer'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit),
-                              SizedBox(width: 8),
-                              Text('Edit'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete),
-                              SizedBox(width: 8),
-                              Text('Delete'),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
                 ],
               ),

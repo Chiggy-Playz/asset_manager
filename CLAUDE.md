@@ -12,3 +12,7 @@ When working with sql tables, always enable RLS (Row Level Security) to ensure d
 # DB Migrations
 
 Use `dbmate new <migration_name>` to create new migration files.
+
+# Instructions
+
+never run flutter analyze.

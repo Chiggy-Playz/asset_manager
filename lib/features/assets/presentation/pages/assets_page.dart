@@ -9,15 +9,12 @@ import '../../../../router/routes.dart';
 import '../../../admin/bloc/locations_bloc.dart';
 import '../../../admin/bloc/locations_event.dart';
 import '../../../admin/bloc/locations_state.dart';
-import '../../../profile/bloc/profile_bloc.dart';
-import '../../../profile/bloc/profile_state.dart';
-import '../../../requests/bloc/asset_requests_bloc.dart';
-import '../../../requests/bloc/asset_requests_event.dart';
 import '../../bloc/assets_bloc.dart';
 import '../../bloc/assets_event.dart';
 import '../../bloc/assets_state.dart';
+import '../utils/asset_dialogs.dart';
 import '../widgets/asset_card.dart';
-import '../widgets/transfer_dialog.dart';
+import '../widgets/asset_detail_content.dart';
 
 class AssetsPage extends StatefulWidget {
   const AssetsPage({super.key});
@@ -27,6 +24,8 @@ class AssetsPage extends StatefulWidget {
 }
 
 class _AssetsPageState extends State<AssetsPage> {
+  String? _selectedAssetId;
+
   @override
   void initState() {
     super.initState();
@@ -129,25 +128,7 @@ class _AssetsPageState extends State<AssetsPage> {
           onRefresh: () async {
             context.read<AssetsBloc>().add(AssetsFetchRequested());
           },
-          child: ListView.builder(
-            padding: const EdgeInsets.only(top: 8, bottom: 80),
-            itemCount: assets.length,
-            itemBuilder: (context, index) {
-              final asset = assets[index];
-              return AssetCard(
-                asset: asset,
-                isLoading: actionAssetId == asset.id,
-                locationFullPath: _getLocationFullPath(
-                  asset.currentLocationId,
-                  locations,
-                ),
-                onTap: () => context.go(Routes.assetDetailPath(asset.id)),
-                onTransfer: () => _showTransferDialog(context, asset),
-                onEdit: () => context.go(Routes.assetEditPath(asset.id)),
-                onDelete: () => _showDeleteConfirmation(context, asset),
-              );
-            },
-          ),
+          child: _buildListView(assets, locations, actionAssetId),
         );
       },
     );
@@ -159,100 +140,120 @@ class _AssetsPageState extends State<AssetsPage> {
     }
 
     final assets = _getAssets(state);
-    final actionAssetId = state is AssetActionInProgress
-        ? state.actionAssetId
-        : null;
+    final actionAssetId =
+        state is AssetActionInProgress ? state.actionAssetId : null;
 
     if (assets.isEmpty) {
       return const Center(child: Text('No assets found'));
     }
 
+    // Find the selected asset
+    AssetModel? selectedAsset;
+    if (_selectedAssetId != null) {
+      try {
+        selectedAsset = assets.firstWhere((a) => a.id == _selectedAssetId);
+      } catch (_) {
+        // Asset not found, clear selection
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() => _selectedAssetId = null);
+          }
+        });
+      }
+    }
+
     return BlocBuilder<LocationsBloc, LocationsState>(
       builder: (context, locState) {
         final locations = _getLocations(locState);
+        final theme = Theme.of(context);
 
-        return Align(
-          alignment: Alignment.topCenter,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Card(
-                child: DataTable(
-                  showCheckboxColumn: false,
-                  columns: const [
-                    DataColumn(label: Text('Tag')),
-                    DataColumn(label: Text('Serial Number')),
-                    DataColumn(label: Text('Model')),
-                    DataColumn(label: Text('CPU')),
-                    DataColumn(label: Text('RAM')),
-                    DataColumn(label: Text('Storage')),
-                    DataColumn(label: Text('Location')),
-                    DataColumn(label: Text('Actions')),
-                  ],
-                  rows: assets.map((asset) {
-                    final isLoading = actionAssetId == asset.id;
-                    return DataRow(
-                      onSelectChanged: (_) =>
-                          context.go(Routes.assetDetailPath(asset.id)),
-                      cells: [
-                        DataCell(Text(asset.tagId)),
-                        DataCell(Text(asset.serialNumber ?? '-')),
-                        DataCell(Text(asset.modelNumber ?? '-')),
-                        DataCell(Text(asset.cpu ?? '-')),
-                        DataCell(Text(asset.ramSummary)),
-                        DataCell(Text(asset.storageSummary)),
-                        DataCell(
-                          Text(
-                            _getLocationFullPath(
-                              asset.currentLocationId,
-                              locations,
-                            ),
-                          ),
-                        ),
-                        DataCell(
-                          isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.swap_horiz),
-                                      tooltip: 'Transfer',
-                                      onPressed: () =>
-                                          _showTransferDialog(context, asset),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.edit),
-                                      tooltip: 'Edit',
-                                      onPressed: () => context.go(
-                                        Routes.assetEditPath(asset.id),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete),
-                                      tooltip: 'Delete',
-                                      onPressed: () => _showDeleteConfirmation(
-                                        context,
-                                        asset,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                ),
+        return Row(
+          children: [
+            SizedBox(
+              width: 320,
+              child: _buildListView(
+                assets,
+                locations,
+                actionAssetId,
+                selectedAssetId: _selectedAssetId,
               ),
             ),
+            VerticalDivider(width: 1, color: theme.colorScheme.outlineVariant),
+            Expanded(
+              child: selectedAsset != null
+                  ? AssetDetailContent(
+                      key: ValueKey(selectedAsset.id),
+                      asset: selectedAsset,
+                      onDeleted: () => setState(() => _selectedAssetId = null),
+                    )
+                  : _buildEmptyDetailPanel(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyDetailPanel(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.touch_app_outlined,
+            size: 64,
+            color: theme.colorScheme.outline,
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Select an asset',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose an asset from the list to view its details',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListView(
+    List<AssetModel> assets,
+    List<LocationModel> locations,
+    String? actionAssetId, {
+    String? selectedAssetId,
+  }) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8, bottom: 80),
+      itemCount: assets.length,
+      itemBuilder: (context, index) {
+        final asset = assets[index];
+        final isSelected = selectedAssetId == asset.id;
+        return AssetCard(
+          asset: asset,
+          isLoading: actionAssetId == asset.id,
+          isSelected: isSelected,
+          locationFullPath: _getLocationFullPath(
+            asset.currentLocationId,
+            locations,
+          ),
+          onTap: () {
+            if (context.isMobile) {
+              context.go(Routes.assetDetailPath(asset.id));
+            } else {
+              setState(() => _selectedAssetId = asset.id);
+            }
+          },
+          onTransfer: () => AssetDialogs.showTransferDialog(context, asset),
+          onEdit: () => context.go(Routes.assetEditPath(asset.id)),
+          onDelete: () => AssetDialogs.showDeleteConfirmation(context, asset),
         );
       },
     );
@@ -287,113 +288,6 @@ class _AssetsPageState extends State<AssetsPage> {
       return location.getFullPath(locations);
     } catch (_) {
       return '-';
-    }
-  }
-
-  void _showTransferDialog(BuildContext context, AssetModel asset) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => TransferDialog(
-        currentLocationId: asset.currentLocationId,
-        onTransfer: (locationId) {
-          context.read<AssetsBloc>().add(
-            AssetTransferRequested(id: asset.id, toLocationId: locationId),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showDeleteConfirmation(BuildContext context, AssetModel asset) {
-    final profileState = context.read<ProfileBloc>().state;
-    final isAdmin =
-        profileState is ProfileLoaded && profileState.profile.isAdmin;
-
-    if (isAdmin) {
-      // Admin: Show simple confirmation and delete directly
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Delete Asset'),
-          content: Text(
-            'Are you sure you want to delete asset ${asset.tagId}? This action cannot be undone.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.read<AssetsBloc>().add(AssetDeleteRequested(asset.id));
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      // Non-admin: Create a delete request
-      final reasonController = TextEditingController();
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Request Asset Deletion'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Request deletion of asset ${asset.tagId}. An admin will review your request.',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: reasonController,
-                decoration: const InputDecoration(
-                  labelText: 'Reason (optional)',
-                  hintText: 'Why should this asset be deleted?',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.read<AssetRequestsBloc>().add(
-                  AssetRequestCreateRequested(
-                    requestType: 'delete',
-                    assetId: asset.id,
-                    requestData: {},
-                    requestNotes: reasonController.text.trim().isEmpty
-                        ? null
-                        : reasonController.text.trim(),
-                  ),
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Delete request submitted for approval'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: const Text('Request Deletion'),
-            ),
-          ],
-        ),
-      );
     }
   }
 }
