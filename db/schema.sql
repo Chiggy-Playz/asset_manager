@@ -831,7 +831,7 @@ SELECT jsonb_build_object(
       'storage', storage,
       'serial_number', serial_number,
       'model_number', model_number,
-      'current_location_id', current_location_id
+      'asset_type', asset_type
     )
 INTO NEW.current_data
 FROM assets
@@ -3317,7 +3317,8 @@ CREATE TABLE public.assets (
     current_location_id uuid,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    tag_id text NOT NULL
+    tag_id text NOT NULL,
+    asset_type text
 );
 
 
@@ -5323,4 +5324,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260107073019'),
     ('20260107100741'),
     ('20260107130000'),
-    ('20260107170318');
+    ('20260107170318'),
+    ('20260108150353');

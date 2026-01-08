@@ -39,6 +39,7 @@ class AssetsRepository {
     List<StorageDeviceModel>? storageDevices,
     String? serialNumber,
     String? modelNumber,
+    String? assetType,
     String? currentLocationId,
   }) async {
     final response = await _client
@@ -51,6 +52,7 @@ class AssetsRepository {
           'storage': storageDevices?.map((d) => d.toJson()).toList() ?? [],
           'serial_number': serialNumber,
           'model_number': modelNumber,
+          'asset_type': assetType,
           'current_location_id': currentLocationId,
         })
         .select('*, locations(name)')
@@ -67,6 +69,7 @@ class AssetsRepository {
     List<StorageDeviceModel>? storageDevices,
     String? serialNumber,
     String? modelNumber,
+    String? assetType,
     String? currentLocationId,
   }) async {
     final response = await _client
@@ -78,6 +81,7 @@ class AssetsRepository {
           'storage': storageDevices?.map((d) => d.toJson()).toList(),
           'serial_number': serialNumber,
           'model_number': modelNumber,
+          'asset_type': assetType,
           'current_location_id': currentLocationId,
         })
         .eq('id', id)

@@ -10,6 +10,7 @@ class AssetModel {
   final List<StorageDeviceModel> storageDevices;
   final String? serialNumber;
   final String? modelNumber;
+  final String? assetType;
   final String? currentLocationId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -26,6 +27,7 @@ class AssetModel {
     this.storageDevices = const [],
     this.serialNumber,
     this.modelNumber,
+    this.assetType,
     this.currentLocationId,
     required this.createdAt,
     required this.updatedAt,
@@ -67,6 +69,7 @@ class AssetModel {
       storageDevices: storageDevices,
       serialNumber: json['serial_number'] as String?,
       modelNumber: json['model_number'] as String?,
+      assetType: json['asset_type'] as String?,
       currentLocationId: json['current_location_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -84,6 +87,7 @@ class AssetModel {
       'storage': storageDevices.map((d) => d.toJson()).toList(),
       'serial_number': serialNumber,
       'model_number': modelNumber,
+      'asset_type': assetType,
       'current_location_id': currentLocationId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -99,6 +103,7 @@ class AssetModel {
     List<StorageDeviceModel>? storageDevices,
     String? serialNumber,
     String? modelNumber,
+    String? assetType,
     String? currentLocationId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -113,6 +118,7 @@ class AssetModel {
       storageDevices: storageDevices ?? this.storageDevices,
       serialNumber: serialNumber ?? this.serialNumber,
       modelNumber: modelNumber ?? this.modelNumber,
+      assetType: assetType ?? this.assetType,
       currentLocationId: currentLocationId ?? this.currentLocationId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

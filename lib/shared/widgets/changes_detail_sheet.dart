@@ -195,8 +195,9 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer
-                          .withValues(alpha: 0.3),
+                      color: theme.colorScheme.primaryContainer.withValues(
+                        alpha: 0.3,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: theme.colorScheme.primaryContainer,
@@ -281,7 +282,13 @@ class _ChangesDetailSheetState extends State<ChangesDetailSheet> {
     final newVals = widget.newValues ?? {};
 
     // Simple text fields
-    final simpleFields = ['cpu', 'generation', 'serial_number', 'model_number'];
+    final simpleFields = [
+      'cpu',
+      'generation',
+      'serial_number',
+      'model_number',
+      'asset_type',
+    ];
 
     // If we have old values, show diff (for history)
     if (widget.oldValues != null) {

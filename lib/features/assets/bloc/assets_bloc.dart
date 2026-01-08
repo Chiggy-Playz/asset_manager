@@ -58,6 +58,7 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
         storageDevices: event.storageDevices,
         serialNumber: event.serialNumber,
         modelNumber: event.modelNumber,
+        assetType: event.assetType,
         currentLocationId: event.currentLocationId,
       );
       emit(AssetActionSuccess(_cachedAssets, 'Asset created'));
@@ -82,6 +83,7 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
         storageDevices: event.storageDevices,
         serialNumber: event.serialNumber,
         modelNumber: event.modelNumber,
+        assetType: event.assetType,
         currentLocationId: event.currentLocationId,
       );
       emit(AssetActionSuccess(_cachedAssets, 'Asset updated'));

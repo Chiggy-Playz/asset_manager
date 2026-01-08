@@ -62,6 +62,7 @@ class AssetEditFormState extends State<AssetEditForm> {
   List<RamModuleModel> _ramModules = [];
   List<StorageDeviceModel> _storageDevices = [];
   String? _selectedModel;
+  String? _selectedAssetType;
   String? _selectedLocationId;
 
   // Initial values for unsaved changes detection
@@ -72,6 +73,7 @@ class AssetEditFormState extends State<AssetEditForm> {
   List<RamModuleModel> _initialRamModules = [];
   List<StorageDeviceModel> _initialStorageDevices = [];
   String? _initialModel;
+  String? _initialAssetType;
   String? _initialLocationId;
 
   @override
@@ -94,6 +96,7 @@ class AssetEditFormState extends State<AssetEditForm> {
     _ramModules = List.from(asset.ramModules);
     _storageDevices = List.from(asset.storageDevices);
     _selectedModel = asset.modelNumber;
+    _selectedAssetType = asset.assetType;
     _selectedLocationId = asset.currentLocationId;
   }
 
@@ -105,6 +108,7 @@ class AssetEditFormState extends State<AssetEditForm> {
     _initialRamModules = List.from(_ramModules);
     _initialStorageDevices = List.from(_storageDevices);
     _initialModel = _selectedModel;
+    _initialAssetType = _selectedAssetType;
     _initialLocationId = _selectedLocationId;
   }
 
@@ -116,6 +120,7 @@ class AssetEditFormState extends State<AssetEditForm> {
         !listEquals(_ramModules, _initialRamModules) ||
         !listEquals(_storageDevices, _initialStorageDevices) ||
         _selectedModel != _initialModel ||
+        _selectedAssetType != _initialAssetType ||
         _selectedLocationId != _initialLocationId ||
         _requestNotesController.text.isNotEmpty;
   }
@@ -141,6 +146,7 @@ class AssetEditFormState extends State<AssetEditForm> {
           ? null
           : _serialNumberController.text,
       'model_number': _selectedModel,
+      'asset_type': _selectedAssetType,
       'current_location_id': _selectedLocationId,
     };
 
@@ -157,6 +163,7 @@ class AssetEditFormState extends State<AssetEditForm> {
                     ? null
                     : _serialNumberController.text,
                 modelNumber: _selectedModel,
+                assetType: _selectedAssetType,
                 currentLocationId: _selectedLocationId,
               ),
             );
@@ -172,6 +179,7 @@ class AssetEditFormState extends State<AssetEditForm> {
                     ? null
                     : _serialNumberController.text,
                 modelNumber: _selectedModel,
+                assetType: _selectedAssetType,
                 currentLocationId: _selectedLocationId,
               ),
             );
@@ -299,6 +307,20 @@ class AssetEditFormState extends State<AssetEditForm> {
                           onChanged: (v) => setState(() => _selectedModel = v),
                           isRequired:
                               fieldOptions?.isFieldRequired('model') ?? false,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Asset Type dropdown
+                        _buildDropdownField(
+                          label: 'Asset Type',
+                          value: _selectedAssetType,
+                          options:
+                              fieldOptions?.getOptionsFor('asset_type') ?? [],
+                          onChanged: (v) =>
+                              setState(() => _selectedAssetType = v),
+                          isRequired:
+                              fieldOptions?.isFieldRequired('asset_type') ??
+                                  false,
                         ),
                         const SizedBox(height: 16),
 

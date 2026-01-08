@@ -13,6 +13,7 @@ class AssetCreateRequested extends AssetsEvent {
   final List<StorageDeviceModel> storageDevices;
   final String? serialNumber;
   final String? modelNumber;
+  final String? assetType;
   final String? currentLocationId;
 
   AssetCreateRequested({
@@ -23,6 +24,7 @@ class AssetCreateRequested extends AssetsEvent {
     this.storageDevices = const [],
     this.serialNumber,
     this.modelNumber,
+    this.assetType,
     this.currentLocationId,
   });
 }
@@ -35,6 +37,7 @@ class AssetUpdateRequested extends AssetsEvent {
   final List<StorageDeviceModel> storageDevices;
   final String? serialNumber;
   final String? modelNumber;
+  final String? assetType;
   final String? currentLocationId;
 
   AssetUpdateRequested({
@@ -45,6 +48,7 @@ class AssetUpdateRequested extends AssetsEvent {
     this.storageDevices = const [],
     this.serialNumber,
     this.modelNumber,
+    this.assetType,
     this.currentLocationId,
   });
 }

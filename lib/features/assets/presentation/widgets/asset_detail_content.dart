@@ -280,6 +280,7 @@ class AssetDetailContentState extends State<AssetDetailContent> {
               copyable: widget.asset.serialNumber != null,
             ),
             _buildInfoRow('Model Number', widget.asset.modelNumber ?? '-'),
+            _buildInfoRow('Asset Type', widget.asset.assetType ?? '-'),
             _buildInfoRow('CPU', widget.asset.cpu ?? '-'),
             _buildInfoRow('Generation', widget.asset.generation ?? '-'),
             _buildInfoRow(
