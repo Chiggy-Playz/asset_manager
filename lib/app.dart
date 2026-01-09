@@ -19,6 +19,7 @@ import 'features/auth/bloc/auth_state.dart';
 import 'features/profile/bloc/profile_bloc.dart';
 import 'features/profile/bloc/profile_event.dart';
 import 'features/requests/bloc/asset_requests_bloc.dart';
+import 'features/search/bloc/search_bloc.dart';
 import 'features/admin/bloc/users_bloc.dart';
 import 'features/settings/cubit/theme_cubit.dart';
 import 'router/app_router.dart';
@@ -47,6 +48,7 @@ class _AppState extends State<App> {
   late final AssetsBloc _assetsBloc;
   late final FieldOptionsBloc _fieldOptionsBloc;
   late final AssetRequestsBloc _assetRequestsBloc;
+  late final SearchBloc _searchBloc;
   late final ThemeCubit _themeCubit;
   late final GoRouter _router;
 
@@ -67,6 +69,7 @@ class _AppState extends State<App> {
     _assetsBloc = AssetsBloc(assetsRepository: _assetsRepository);
     _fieldOptionsBloc = FieldOptionsBloc(repository: _fieldOptionsRepository);
     _assetRequestsBloc = AssetRequestsBloc(repository: _assetRequestsRepository);
+    _searchBloc = SearchBloc(assetsRepository: _assetsRepository);
     _themeCubit = ThemeCubit(widget.prefs);
     _router = createAppRouter(authBloc: _authBloc, profileBloc: _profileBloc);
 
@@ -88,6 +91,7 @@ class _AppState extends State<App> {
     _assetsBloc.close();
     _fieldOptionsBloc.close();
     _assetRequestsBloc.close();
+    _searchBloc.close();
     _themeCubit.close();
     super.dispose();
   }
@@ -103,6 +107,7 @@ class _AppState extends State<App> {
         BlocProvider.value(value: _assetsBloc),
         BlocProvider.value(value: _fieldOptionsBloc),
         BlocProvider.value(value: _assetRequestsBloc),
+        BlocProvider.value(value: _searchBloc),
         BlocProvider.value(value: _themeCubit),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(

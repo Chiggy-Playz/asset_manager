@@ -842,6 +842,56 @@ $$;
 
 
 --
+-- Name: calculate_total_ram(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.calculate_total_ram(ram_jsonb jsonb) RETURNS integer
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+DECLARE
+  total INT := 0;
+  module JSONB;
+BEGIN
+  IF ram_jsonb IS NULL OR jsonb_array_length(ram_jsonb) = 0 THEN
+    RETURN 0;
+  END IF;
+
+  FOR module IN SELECT * FROM jsonb_array_elements(ram_jsonb)
+  LOOP
+    total := total + parse_size_to_gb(module->>'size');
+  END LOOP;
+
+  RETURN total;
+END;
+$$;
+
+
+--
+-- Name: calculate_total_storage(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.calculate_total_storage(storage_jsonb jsonb) RETURNS integer
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+DECLARE
+  total INT := 0;
+  device JSONB;
+BEGIN
+  IF storage_jsonb IS NULL OR jsonb_array_length(storage_jsonb) = 0 THEN
+    RETURN 0;
+  END IF;
+
+  FOR device IN SELECT * FROM jsonb_array_elements(storage_jsonb)
+  LOOP
+    total := total + parse_size_to_gb(device->>'size');
+  END LOOP;
+
+  RETURN total;
+END;
+$$;
+
+
+--
 -- Name: capitalize_asset_attributes(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -914,6 +964,36 @@ $$;
 
 
 --
+-- Name: get_location_with_descendants(uuid[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_location_with_descendants(location_ids uuid[]) RETURNS uuid[]
+    LANGUAGE plpgsql STABLE
+    AS $$
+DECLARE
+  result UUID[];
+BEGIN
+  IF location_ids IS NULL OR array_length(location_ids, 1) IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  WITH RECURSIVE location_tree AS (
+    -- Base case: selected locations
+    SELECT id FROM locations WHERE id = ANY(location_ids)
+    UNION ALL
+    -- Recursive case: children
+    SELECT l.id
+    FROM locations l
+    INNER JOIN location_tree lt ON l.parent_id = lt.id
+  )
+  SELECT array_agg(id) INTO result FROM location_tree;
+
+  RETURN result;
+END;
+$$;
+
+
+--
 -- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -977,6 +1057,107 @@ $$;
 
 
 --
+-- Name: parse_size_to_gb(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.parse_size_to_gb(size_str text) RETURNS integer
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+DECLARE
+  cleaned_str TEXT;
+  num_part TEXT;
+  unit_part TEXT;
+  size_val INT;
+BEGIN
+  IF size_str IS NULL OR size_str = '' THEN
+    RETURN 0;
+  END IF;
+
+  -- Strip spaces from the input
+  cleaned_str := regexp_replace(size_str, '\s', '', 'g');
+
+  -- Extract numeric part and unit part
+  num_part := regexp_replace(cleaned_str, '[^0-9.]', '', 'g');
+  unit_part := upper(regexp_replace(cleaned_str, '[0-9.]', '', 'g'));
+
+  IF num_part = '' THEN
+    RETURN 0;
+  END IF;
+
+  size_val := num_part::INT;
+
+  -- Convert to GB based on unit
+  CASE unit_part
+    WHEN 'TB' THEN RETURN size_val * 1024;
+    WHEN 'GB' THEN RETURN size_val;
+    WHEN 'MB' THEN RETURN size_val / 1024;
+    ELSE RETURN size_val; -- Assume GB if no unit
+  END CASE;
+END;
+$$;
+
+
+--
+-- Name: ram_has_ddr_type(jsonb, text[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ram_has_ddr_type(ram_jsonb jsonb, ddr_types text[]) RETURNS boolean
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+DECLARE
+  module JSONB;
+BEGIN
+  IF ram_jsonb IS NULL OR jsonb_array_length(ram_jsonb) = 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  IF ddr_types IS NULL OR array_length(ddr_types, 1) IS NULL THEN
+    RETURN TRUE;
+  END IF;
+
+  FOR module IN SELECT * FROM jsonb_array_elements(ram_jsonb)
+  LOOP
+    IF module->>'ddrType' = ANY(ddr_types) THEN
+      RETURN TRUE;
+    END IF;
+  END LOOP;
+
+  RETURN FALSE;
+END;
+$$;
+
+
+--
+-- Name: ram_has_form_factor(jsonb, text[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ram_has_form_factor(ram_jsonb jsonb, form_factors text[]) RETURNS boolean
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+DECLARE
+  module JSONB;
+BEGIN
+  IF ram_jsonb IS NULL OR jsonb_array_length(ram_jsonb) = 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  IF form_factors IS NULL OR array_length(form_factors, 1) IS NULL THEN
+    RETURN TRUE;
+  END IF;
+
+  FOR module IN SELECT * FROM jsonb_array_elements(ram_jsonb)
+  LOOP
+    IF module->>'formFactor' = ANY(form_factors) THEN
+      RETURN TRUE;
+    END IF;
+  END LOOP;
+
+  RETURN FALSE;
+END;
+$$;
+
+
+--
 -- Name: reject_request(uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1005,6 +1186,289 @@ BEGIN
   END IF;
 
   RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+--
+-- Name: search_assets(jsonb, integer, integer, boolean); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.search_assets(p_filters jsonb, p_page_size integer DEFAULT 25, p_page_offset integer DEFAULT 0, p_count_only boolean DEFAULT false) RETURNS TABLE(id uuid, tag_id text, serial_number text, model_number text, asset_type text, cpu text, generation text, ram jsonb, storage jsonb, current_location_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, location_name text, total_count bigint)
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+  -- Text filters
+  v_tag_id TEXT;
+  v_serial_number TEXT;
+  v_model_number TEXT;
+
+  -- Multi-select filters
+  v_asset_types TEXT[];
+  v_cpus TEXT[];
+  v_generations TEXT[];
+
+  -- RAM filters
+  v_ram_size INT;
+  v_ram_operator TEXT;
+  v_ram_types TEXT[];
+  v_ram_form_factors TEXT[];
+
+  -- Storage filters
+  v_storage_size INT;
+  v_storage_operator TEXT;
+  v_storage_types TEXT[];
+
+  -- Location filter
+  v_location_ids UUID[];
+  v_expanded_location_ids UUID[];
+
+  -- Count
+  v_total_count BIGINT;
+BEGIN
+  -- ============================================================================
+  -- SECURITY CHECK: Require authentication
+  -- ============================================================================
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  -- Parse text filters
+  v_tag_id := p_filters->>'tag_id';
+  v_serial_number := p_filters->>'serial_number';
+  v_model_number := p_filters->>'model_number';
+
+  -- Parse multi-select filters (convert JSONB arrays to TEXT arrays)
+  IF p_filters->'asset_types' IS NOT NULL AND jsonb_array_length(p_filters->'asset_types') > 0 THEN
+    SELECT array_agg(elem::TEXT) INTO v_asset_types
+    FROM jsonb_array_elements_text(p_filters->'asset_types') AS elem;
+  END IF;
+
+  IF p_filters->'cpus' IS NOT NULL AND jsonb_array_length(p_filters->'cpus') > 0 THEN
+    SELECT array_agg(elem::TEXT) INTO v_cpus
+    FROM jsonb_array_elements_text(p_filters->'cpus') AS elem;
+  END IF;
+
+  IF p_filters->'generations' IS NOT NULL AND jsonb_array_length(p_filters->'generations') > 0 THEN
+    SELECT array_agg(elem::TEXT) INTO v_generations
+    FROM jsonb_array_elements_text(p_filters->'generations') AS elem;
+  END IF;
+
+  -- Parse RAM filters
+  IF p_filters->>'ram_size' IS NOT NULL AND p_filters->>'ram_size' != '' THEN
+    v_ram_size := (p_filters->>'ram_size')::INT;
+  END IF;
+  v_ram_operator := p_filters->>'ram_operator';
+
+  IF p_filters->'ram_types' IS NOT NULL AND jsonb_array_length(p_filters->'ram_types') > 0 THEN
+    SELECT array_agg(elem::TEXT) INTO v_ram_types
+    FROM jsonb_array_elements_text(p_filters->'ram_types') AS elem;
+  END IF;
+
+  IF p_filters->'ram_form_factors' IS NOT NULL AND jsonb_array_length(p_filters->'ram_form_factors') > 0 THEN
+    SELECT array_agg(elem::TEXT) INTO v_ram_form_factors
+    FROM jsonb_array_elements_text(p_filters->'ram_form_factors') AS elem;
+  END IF;
+
+  -- Parse storage filters
+  IF p_filters->>'storage_size' IS NOT NULL AND p_filters->>'storage_size' != '' THEN
+    v_storage_size := (p_filters->>'storage_size')::INT;
+  END IF;
+  v_storage_operator := p_filters->>'storage_operator';
+
+  IF p_filters->'storage_types' IS NOT NULL AND jsonb_array_length(p_filters->'storage_types') > 0 THEN
+    SELECT array_agg(elem::TEXT) INTO v_storage_types
+    FROM jsonb_array_elements_text(p_filters->'storage_types') AS elem;
+  END IF;
+
+  -- Parse location filter and expand to include descendants
+  IF p_filters->'location_ids' IS NOT NULL AND jsonb_array_length(p_filters->'location_ids') > 0 THEN
+    SELECT array_agg(elem::UUID) INTO v_location_ids
+    FROM jsonb_array_elements_text(p_filters->'location_ids') AS elem;
+    v_expanded_location_ids := get_location_with_descendants(v_location_ids);
+  END IF;
+
+  -- Get total count first
+  SELECT COUNT(*) INTO v_total_count
+  FROM assets a
+  LEFT JOIN locations l ON a.current_location_id = l.id
+  WHERE
+    -- Text filters (partial match)
+    (v_tag_id IS NULL OR a.tag_id::TEXT ILIKE '%' || v_tag_id || '%')
+    AND (v_serial_number IS NULL OR a.serial_number ILIKE '%' || v_serial_number || '%')
+    AND (v_model_number IS NULL OR a.model_number ILIKE '%' || v_model_number || '%')
+
+    -- Multi-select filters
+    AND (v_asset_types IS NULL OR a.asset_type = ANY(v_asset_types))
+    AND (v_cpus IS NULL OR a.cpu = ANY(v_cpus))
+    AND (v_generations IS NULL OR a.generation = ANY(v_generations))
+
+    -- RAM size filter
+    AND (
+      v_ram_size IS NULL
+      OR (
+        CASE v_ram_operator
+          WHEN '>' THEN calculate_total_ram(a.ram) > v_ram_size
+          WHEN '<' THEN calculate_total_ram(a.ram) < v_ram_size
+          WHEN '>=' THEN calculate_total_ram(a.ram) >= v_ram_size
+          WHEN '<=' THEN calculate_total_ram(a.ram) <= v_ram_size
+          WHEN '=' THEN calculate_total_ram(a.ram) = v_ram_size
+          ELSE TRUE
+        END
+      )
+    )
+
+    -- RAM type filter
+    AND (v_ram_types IS NULL OR ram_has_ddr_type(a.ram, v_ram_types))
+
+    -- RAM form factor filter
+    AND (v_ram_form_factors IS NULL OR ram_has_form_factor(a.ram, v_ram_form_factors))
+
+    -- Storage size filter
+    AND (
+      v_storage_size IS NULL
+      OR (
+        CASE v_storage_operator
+          WHEN '>' THEN calculate_total_storage(a.storage) > v_storage_size
+          WHEN '<' THEN calculate_total_storage(a.storage) < v_storage_size
+          WHEN '>=' THEN calculate_total_storage(a.storage) >= v_storage_size
+          WHEN '<=' THEN calculate_total_storage(a.storage) <= v_storage_size
+          WHEN '=' THEN calculate_total_storage(a.storage) = v_storage_size
+          ELSE TRUE
+        END
+      )
+    )
+
+    -- Storage type filter
+    AND (v_storage_types IS NULL OR storage_has_type(a.storage, v_storage_types))
+
+    -- Location filter (includes descendants)
+    AND (v_expanded_location_ids IS NULL OR a.current_location_id = ANY(v_expanded_location_ids));
+
+  -- If count only, return just the count
+  IF p_count_only THEN
+    RETURN QUERY SELECT
+      NULL::UUID,
+      NULL::TEXT,
+      NULL::TEXT,
+      NULL::TEXT,
+      NULL::TEXT,
+      NULL::TEXT,
+      NULL::TEXT,
+      NULL::JSONB,
+      NULL::JSONB,
+      NULL::UUID,
+      NULL::TIMESTAMPTZ,
+      NULL::TIMESTAMPTZ,
+      NULL::TEXT,
+      v_total_count;
+    RETURN;
+  END IF;
+
+  -- Return paginated results with total count
+  RETURN QUERY
+  SELECT
+    a.id,
+    a.tag_id,
+    a.serial_number,
+    a.model_number,
+    a.asset_type,
+    a.cpu,
+    a.generation,
+    a.ram,
+    a.storage,
+    a.current_location_id,
+    a.created_at,
+    a.updated_at,
+    l.name AS location_name,
+    v_total_count
+  FROM assets a
+  LEFT JOIN locations l ON a.current_location_id = l.id
+  WHERE
+    -- Text filters (partial match)
+    (v_tag_id IS NULL OR a.tag_id::TEXT ILIKE '%' || v_tag_id || '%')
+    AND (v_serial_number IS NULL OR a.serial_number ILIKE '%' || v_serial_number || '%')
+    AND (v_model_number IS NULL OR a.model_number ILIKE '%' || v_model_number || '%')
+
+    -- Multi-select filters
+    AND (v_asset_types IS NULL OR a.asset_type = ANY(v_asset_types))
+    AND (v_cpus IS NULL OR a.cpu = ANY(v_cpus))
+    AND (v_generations IS NULL OR a.generation = ANY(v_generations))
+
+    -- RAM size filter
+    AND (
+      v_ram_size IS NULL
+      OR (
+        CASE v_ram_operator
+          WHEN '>' THEN calculate_total_ram(a.ram) > v_ram_size
+          WHEN '<' THEN calculate_total_ram(a.ram) < v_ram_size
+          WHEN '>=' THEN calculate_total_ram(a.ram) >= v_ram_size
+          WHEN '<=' THEN calculate_total_ram(a.ram) <= v_ram_size
+          WHEN '=' THEN calculate_total_ram(a.ram) = v_ram_size
+          ELSE TRUE
+        END
+      )
+    )
+
+    -- RAM type filter
+    AND (v_ram_types IS NULL OR ram_has_ddr_type(a.ram, v_ram_types))
+
+    -- RAM form factor filter
+    AND (v_ram_form_factors IS NULL OR ram_has_form_factor(a.ram, v_ram_form_factors))
+
+    -- Storage size filter
+    AND (
+      v_storage_size IS NULL
+      OR (
+        CASE v_storage_operator
+          WHEN '>' THEN calculate_total_storage(a.storage) > v_storage_size
+          WHEN '<' THEN calculate_total_storage(a.storage) < v_storage_size
+          WHEN '>=' THEN calculate_total_storage(a.storage) >= v_storage_size
+          WHEN '<=' THEN calculate_total_storage(a.storage) <= v_storage_size
+          WHEN '=' THEN calculate_total_storage(a.storage) = v_storage_size
+          ELSE TRUE
+        END
+      )
+    )
+
+    -- Storage type filter
+    AND (v_storage_types IS NULL OR storage_has_type(a.storage, v_storage_types))
+
+    -- Location filter (includes descendants)
+    AND (v_expanded_location_ids IS NULL OR a.current_location_id = ANY(v_expanded_location_ids))
+  ORDER BY a.tag_id ASC
+  LIMIT p_page_size
+  OFFSET p_page_offset;
+END;
+$$;
+
+
+--
+-- Name: storage_has_type(jsonb, text[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.storage_has_type(storage_jsonb jsonb, storage_types text[]) RETURNS boolean
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+DECLARE
+  device JSONB;
+BEGIN
+  IF storage_jsonb IS NULL OR jsonb_array_length(storage_jsonb) = 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  IF storage_types IS NULL OR array_length(storage_types, 1) IS NULL THEN
+    RETURN TRUE;
+  END IF;
+
+  FOR device IN SELECT * FROM jsonb_array_elements(storage_jsonb)
+  LOOP
+    IF device->>'type' = ANY(storage_types) THEN
+      RETURN TRUE;
+    END IF;
+  END LOOP;
+
+  RETURN FALSE;
 END;
 $$;
 
@@ -5325,4 +5789,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260107100741'),
     ('20260107130000'),
     ('20260107170318'),
-    ('20260108150353');
+    ('20260108150353'),
+    ('20260109195220');

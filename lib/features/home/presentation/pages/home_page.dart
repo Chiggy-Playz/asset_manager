@@ -73,19 +73,19 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Shell branches: 0=Assets, 1=Requests, 2=Admin, 3=Settings
-  // Display for admin: 0=Assets, 1=Requests, 2=Admin, 3=Settings
-  // Display for non-admin: 0=Assets, 1=Requests, 2=Settings (Admin hidden)
+  // Shell branches: 0=Assets, 1=Search, 2=Requests, 3=Admin, 4=Settings
+  // Display for admin: 0=Assets, 1=Search, 2=Requests, 3=Admin, 4=Settings
+  // Display for non-admin: 0=Assets, 1=Search, 2=Requests, 3=Settings (Admin hidden)
   int _shellIndexToDisplayIndex(int shellIndex, bool isAdmin) {
     if (isAdmin) return shellIndex;
-    // Non-admin: Settings (shell 3) becomes display 2
-    return shellIndex == 3 ? 2 : shellIndex;
+    // Non-admin: Settings (shell 4) becomes display 3
+    return shellIndex == 4 ? 3 : shellIndex;
   }
 
   int _displayIndexToShellIndex(int displayIndex, bool isAdmin) {
     if (isAdmin) return displayIndex;
-    // Non-admin: display 2 (Settings) maps to shell 3
-    return displayIndex == 2 ? 3 : displayIndex;
+    // Non-admin: display 3 (Settings) maps to shell 4
+    return displayIndex == 3 ? 4 : displayIndex;
   }
 
   List<NavigationDestination> _buildBarDestinations(bool isAdmin) {
@@ -94,6 +94,11 @@ class HomePage extends StatelessWidget {
         icon: Icon(Icons.inventory_2_outlined),
         selectedIcon: Icon(Icons.inventory_2),
         label: 'Assets',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.search_outlined),
+        selectedIcon: Icon(Icons.search),
+        label: 'Search',
       ),
       const NavigationDestination(
         icon: Icon(Icons.assignment_outlined),
@@ -120,6 +125,11 @@ class HomePage extends StatelessWidget {
         icon: Icon(Icons.inventory_2_outlined),
         selectedIcon: Icon(Icons.inventory_2),
         label: Text('Assets'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.search_outlined),
+        selectedIcon: Icon(Icons.search),
+        label: Text('Search'),
       ),
       const NavigationRailDestination(
         icon: Icon(Icons.assignment_outlined),

@@ -11,6 +11,9 @@ abstract class Routes {
   static const assetDetail = '/home/assets/:id';
   static const assetEdit = '/home/assets/:id/edit';
 
+  // Search
+  static const search = '/home/search';
+
   // Requests (for users)
   static const requests = '/home/requests';
 

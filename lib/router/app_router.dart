@@ -16,6 +16,7 @@ import '../features/admin/presentation/pages/users_page.dart';
 import '../features/assets/presentation/pages/asset_detail_page.dart';
 import '../features/assets/presentation/pages/asset_form_page.dart';
 import '../features/assets/presentation/pages/assets_page.dart';
+import '../features/search/presentation/pages/search_page.dart';
 import '../features/requests/presentation/pages/requests_page.dart';
 import '../features/auth/bloc/auth_bloc.dart';
 import '../features/auth/bloc/auth_state.dart';
@@ -165,6 +166,14 @@ GoRouter createAppRouter({
                     ],
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.search,
+                builder: (context, state) => const SearchPage(),
               ),
             ],
           ),
