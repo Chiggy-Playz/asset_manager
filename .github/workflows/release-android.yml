@@ -42,6 +42,17 @@ jobs:
             gradle-${{ runner.os }}-
 
       # ─────────────────────────────
+      # Supabase CLI
+      # ─────────────────────────────
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Link Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+
+      # ─────────────────────────────
       # Android signing
       # ─────────────────────────────
       - name: Decode Android keystore
@@ -93,17 +104,6 @@ jobs:
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-
-      # ─────────────────────────────
-      # Supabase CLI
-      # ─────────────────────────────
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
-
-      - name: Link Supabase project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase link --project-ref "$(echo '${{ secrets.SUPABASE_URL }}' | cut -d'.' -f1 | cut -d'/' -f3)"
 
       # ─────────────────────────────
       # Upload APK
