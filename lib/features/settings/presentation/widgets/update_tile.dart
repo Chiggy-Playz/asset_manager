@@ -84,7 +84,10 @@ class UpdateTile extends StatelessWidget {
   );
 
   static Future<void> _install(BuildContext context, String path) async {
-    final result = await OpenFilex.open(path);
+    final result = await OpenFilex.open(
+      path,
+      type: 'application/vnd.android.package-archive',
+    );
     if (result.type != ResultType.done && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to open installer: ${result.message}')),
