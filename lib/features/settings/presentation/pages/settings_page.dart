@@ -8,6 +8,7 @@ import '../../../auth/bloc/auth_event.dart';
 import '../../../profile/bloc/profile_bloc.dart';
 import '../../../profile/bloc/profile_event.dart';
 import '../../cubit/theme_cubit.dart';
+import '../widgets/update_tile.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -40,6 +41,7 @@ class SettingsPage extends StatelessWidget {
                 },
               ),
               const Divider(),
+              if (context.isMobile) ...[const UpdateTile(), const Divider()],
               FutureBuilder<PackageInfo>(
                 future: PackageInfo.fromPlatform(),
                 builder: (context, snapshot) {
