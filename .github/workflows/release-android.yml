@@ -3,7 +3,7 @@ name: Build & Release Android APK
 on:
   push:
     tags:
-      - "v*.*.*"   # e.g. v1.3.0
+      - "v*.*.*" # e.g. v1.3.0
 
 jobs:
   release:
@@ -29,7 +29,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version-file: pubspec.yaml 
+          flutter-version-file: pubspec.yaml
           cache: true
 
       - name: Cache Gradle
@@ -132,6 +132,14 @@ jobs:
           }
           EOF
 
+      - name: Move latest.json to latest.json.bak
+        continue-on-error: true
+        run: |
+          supabase storage cp \
+            --experimental \
+            "ss:///app-updates/metadata/latest.json" \
+            "ss:///app-updates/metadata/latest.json.bak"
+
       - name: Upload latest.json
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -140,3 +148,11 @@ jobs:
             --experimental \
             latest.json \
             "ss:///app-updates/metadata/latest.json"
+
+      - name: Delete latest.json.bak
+        if: always()
+        continue-on-error: true
+        run: |
+          supabase storage rm \
+            --experimental \
+            "ss:///app-updates/metadata/latest.json.bak"
