@@ -132,13 +132,11 @@ jobs:
           }
           EOF
 
-      - name: Move latest.json to latest.json.bak
-        continue-on-error: true
+      - name: Delete latest.json
         run: |
-          supabase storage cp \
+          supabase storage rm \
             --experimental \
-            "ss:///app-updates/metadata/latest.json" \
-            "ss:///app-updates/metadata/latest.json.bak"
+            "ss:///app-updates/metadata/latest.json"
 
       - name: Upload latest.json
         env:
@@ -149,10 +147,3 @@ jobs:
             latest.json \
             "ss:///app-updates/metadata/latest.json"
 
-      - name: Delete latest.json.bak
-        if: always()
-        continue-on-error: true
-        run: |
-          supabase storage rm \
-            --experimental \
-            "ss:///app-updates/metadata/latest.json.bak"
