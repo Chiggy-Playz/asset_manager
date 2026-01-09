@@ -52,6 +52,14 @@ jobs:
 
       - name: Link Supabase project
         run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
+      
+      # ─────────────────────────────
+      # Install dbmate
+      # ─────────────────────────────
+      - name: Install dbmate
+        run: |
+          npm install --save-dev dbmate
+          npx dbmate --version
 
       # ─────────────────────────────
       # Android signing
@@ -105,6 +113,14 @@ jobs:
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+      # ─────────────────────────────
+      # Run db migrations
+      # ─────────────────────────────
+      - name: Run Supabase migrations
+        env: 
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: npx dbmate up
 
       # ─────────────────────────────
       # Upload APK
