@@ -61,8 +61,6 @@ Deno.serve(async (_req) => {
       versionName: latest.versionName,
       apkUrl: signed.signedUrl,
       sha256: latest.sha256,
-      minSdk: latest.minSdk,
-      changelog: latest.changelog ?? "",
     });
   } catch (_error) {
     return json({ error: "Unexpected error" }, 500);
