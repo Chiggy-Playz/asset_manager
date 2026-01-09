@@ -118,7 +118,20 @@ class _AssetsPageState extends State<AssetsPage> {
             focusNode: _focusNode,
             autofocus: true,
             child: Scaffold(
-              appBar: AppBar(title: const Text('Assets')),
+              appBar: AppBar(
+                title: const Text('Assets'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    tooltip: 'Search Assets',
+                    onPressed: () {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(const SnackBar(content: Text('Soon')));
+                    },
+                  ),
+                ],
+              ),
               floatingActionButton: FloatingActionButton.extended(
                 onPressed: () => context.go(Routes.assetCreate),
                 icon: const Icon(Icons.add),
