@@ -116,7 +116,7 @@ jobs:
           supabase storage cp \
             --experimental \
             "${{ steps.meta.outputs.apk }}" \
-            "ss:///app-updates/app-${{ steps.meta.outputs.version_name }}.apk"
+            "ss:///app-updates/asset_manager-${{ steps.meta.outputs.version_name }}.apk"
 
       # ─────────────────────────────
       # Generate & upload latest.json
@@ -127,7 +127,7 @@ jobs:
           {
             "versionCode": ${{ steps.meta.outputs.version_code }},
             "versionName": "${{ steps.meta.outputs.version_name }}",
-            "apkPath": "app-${{ steps.meta.outputs.version_name }}.apk",
+            "apkPath": "asset_manager-${{ steps.meta.outputs.version_name }}.apk",
             "sha256": "${{ steps.meta.outputs.sha256 }}"
           }
           EOF
