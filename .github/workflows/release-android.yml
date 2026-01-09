@@ -10,6 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+          connect-timeout-seconds: 60
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -24,6 +30,16 @@ jobs:
         with:
           flutter-version-file: pubspec.yaml 
           cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       # ─────────────────────────────
       # Android signing
@@ -85,12 +101,6 @@ jobs:
         uses: supabase/setup-cli@v1
 
       # ─────────────────────────────
-      # Link Supabase project
-      # ─────────────────────────────
-      - name: Link Supabase project
-        run: supabase link --project-ref "$(echo '${{ secrets.SUPABASE_URL }}' | cut -d'.' -f1 | cut -d'/' -f3)"
-
-      # ─────────────────────────────
       # Upload APK
       # ─────────────────────────────
       - name: Upload APK to Supabase Storage
@@ -99,6 +109,7 @@ jobs:
         run: |
           supabase storage cp \
             --experimental \
+            --project-ref "$(echo '${{ secrets.SUPABASE_URL }}' | cut -d'.' -f1 | cut -d'/' -f3)" \
             "${{ steps.meta.outputs.apk }}" \
             "app-updates/app-${{ steps.meta.outputs.version_name }}.apk"
 
@@ -122,5 +133,6 @@ jobs:
         run: |
           supabase storage cp \
             --experimental \
+            --project-ref "$(echo '${{ secrets.SUPABASE_URL }}' | cut -d'.' -f1 | cut -d'/' -f3)" \
             latest.json \
             "app-updates/metadata/latest.json"
