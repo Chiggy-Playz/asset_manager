@@ -50,11 +50,9 @@ jobs:
           version: 2.67.1
 
       - name: Link Supabase project
-        run: |
-          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
-          echo hi
-          echo $SUPABASE_ACCESS_TOKEN
-          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
+        env: 
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
 
       # ─────────────────────────────
       # Android signing
