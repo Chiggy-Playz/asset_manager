@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../auth/bloc/auth_bloc.dart';
@@ -36,6 +37,19 @@ class SettingsPage extends StatelessWidget {
                 onTap: () {
                   context.read<ProfileBloc>().add(ProfileCleared());
                   context.read<AuthBloc>().add(SignOutRequested());
+                },
+              ),
+              const Divider(),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  final version = snapshot.data?.version ?? '-';
+                  final buildNumber = snapshot.data?.buildNumber ?? '-';
+                  return ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: const Text('Version'),
+                    subtitle: Text('$version ($buildNumber)'),
+                  );
                 },
               ),
             ],
