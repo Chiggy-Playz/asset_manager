@@ -73,7 +73,7 @@ jobs:
         run: flutter pub get
 
       - name: Build release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --target-platform android-arm,android-arm64 --split-debug-info=build/symbols --obfuscate
 
       # ─────────────────────────────
       # Extract metadata
@@ -100,6 +100,11 @@ jobs:
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
 
+      - name: Link Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref "$(echo '${{ secrets.SUPABASE_URL }}' | cut -d'.' -f1 | cut -d'/' -f3)"
+
       # ─────────────────────────────
       # Upload APK
       # ─────────────────────────────
@@ -109,9 +114,8 @@ jobs:
         run: |
           supabase storage cp \
             --experimental \
-            --project-ref "$(echo '${{ secrets.SUPABASE_URL }}' | cut -d'.' -f1 | cut -d'/' -f3)" \
             "${{ steps.meta.outputs.apk }}" \
-            "app-updates/app-${{ steps.meta.outputs.version_name }}.apk"
+            "ss:///app-updates/app-${{ steps.meta.outputs.version_name }}.apk"
 
       # ─────────────────────────────
       # Generate & upload latest.json
@@ -133,6 +137,5 @@ jobs:
         run: |
           supabase storage cp \
             --experimental \
-            --project-ref "$(echo '${{ secrets.SUPABASE_URL }}' | cut -d'.' -f1 | cut -d'/' -f3)" \
             latest.json \
-            "app-updates/metadata/latest.json"
+            "ss:///app-updates/metadata/latest.json"
