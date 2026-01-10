@@ -28,18 +28,33 @@ class _AssetsPageState extends State<AssetsPage> {
   String? _selectedAssetId;
   final _detailContentKey = GlobalKey<AssetDetailContentState>();
   final _focusNode = FocusNode();
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     context.read<AssetsBloc>().add(AssetsFetchRequested());
     context.read<LocationsBloc>().add(LocationsFetchRequested());
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final threshold = maxScroll * 0.8;
+
+    if (currentScroll >= threshold) {
+      context.read<AssetsBloc>().add(AssetsLoadMoreRequested());
+    }
   }
 
   void _handleEscape(List<AssetModel> assets) {
@@ -201,6 +216,8 @@ class _AssetsPageState extends State<AssetsPage> {
       );
     }
 
+    final isLoadingMore = state is AssetsLoaded && state.isLoadingMore;
+
     return BlocBuilder<LocationsBloc, LocationsState>(
       builder: (context, locState) {
         final locations = _getLocations(locState);
@@ -209,7 +226,12 @@ class _AssetsPageState extends State<AssetsPage> {
           onRefresh: () async {
             context.read<AssetsBloc>().add(AssetsFetchRequested());
           },
-          child: _buildListView(assets, locations, actionAssetId),
+          child: _buildListView(
+            assets,
+            locations,
+            actionAssetId,
+            isLoadingMore: isLoadingMore,
+          ),
         );
       },
     );
@@ -224,6 +246,7 @@ class _AssetsPageState extends State<AssetsPage> {
     final actionAssetId = state is AssetActionInProgress
         ? state.actionAssetId
         : null;
+    final isLoadingMore = state is AssetsLoaded && state.isLoadingMore;
 
     if (assets.isEmpty) {
       return const Center(child: Text('No assets found'));
@@ -258,6 +281,7 @@ class _AssetsPageState extends State<AssetsPage> {
                 locations,
                 actionAssetId,
                 selectedAssetId: _selectedAssetId,
+                isLoadingMore: isLoadingMore,
               ),
             ),
             VerticalDivider(width: 1, color: theme.colorScheme.outlineVariant),
@@ -311,11 +335,19 @@ class _AssetsPageState extends State<AssetsPage> {
     List<LocationModel> locations,
     String? actionAssetId, {
     String? selectedAssetId,
+    bool isLoadingMore = false,
   }) {
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.only(top: 8, bottom: 80),
-      itemCount: assets.length,
+      itemCount: assets.length + (isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index >= assets.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
         final asset = assets[index];
         final isSelected = selectedAssetId == asset.id;
         return AssetCard(

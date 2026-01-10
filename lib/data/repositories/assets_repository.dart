@@ -21,6 +21,20 @@ class AssetsRepository {
     return (response as List).map((json) => AssetModel.fromJson(json)).toList();
   }
 
+  /// Fetches assets with pagination support using limit/offset.
+  Future<List<AssetModel>> fetchAssetsPaginated({
+    int limit = 25,
+    int offset = 0,
+  }) async {
+    final response = await _client
+        .from('assets')
+        .select('*, locations(name)')
+        .order('tag_id', ascending: true)
+        .range(offset, offset + limit - 1);
+
+    return (response as List).map((json) => AssetModel.fromJson(json)).toList();
+  }
+
   Future<AssetModel?> fetchAsset(String id) async {
     final response = await _client
         .from('assets')

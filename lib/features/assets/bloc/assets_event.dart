@@ -5,6 +5,8 @@ sealed class AssetsEvent {}
 
 class AssetsFetchRequested extends AssetsEvent {}
 
+class AssetsLoadMoreRequested extends AssetsEvent {}
+
 class AssetCreateRequested extends AssetsEvent {
   final String tagId;
   final String? cpu;

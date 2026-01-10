@@ -8,7 +8,26 @@ class AssetsLoading extends AssetsState {}
 
 class AssetsLoaded extends AssetsState {
   final List<AssetModel> assets;
-  AssetsLoaded(this.assets);
+  final bool hasMore;
+  final bool isLoadingMore;
+
+  AssetsLoaded(
+    this.assets, {
+    this.hasMore = true,
+    this.isLoadingMore = false,
+  });
+
+  AssetsLoaded copyWith({
+    List<AssetModel>? assets,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return AssetsLoaded(
+      assets ?? this.assets,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
 }
 
 class AssetsError extends AssetsState {
@@ -19,11 +38,13 @@ class AssetsError extends AssetsState {
 class AssetActionInProgress extends AssetsState {
   final List<AssetModel> assets;
   final String? actionAssetId;
-  AssetActionInProgress(this.assets, {this.actionAssetId});
+  final bool hasMore;
+  AssetActionInProgress(this.assets, {this.actionAssetId, this.hasMore = true});
 }
 
 class AssetActionSuccess extends AssetsState {
   final List<AssetModel> assets;
   final String message;
-  AssetActionSuccess(this.assets, this.message);
+  final bool hasMore;
+  AssetActionSuccess(this.assets, this.message, {this.hasMore = true});
 }
